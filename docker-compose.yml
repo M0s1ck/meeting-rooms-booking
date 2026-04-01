@@ -1,0 +1,33 @@
+services:
+  scheduler-postgres:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_DB=scheduler_db
+      - POSTGRES_USER=psg_user
+      - POSTGRES_PASSWORD=psg_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - scheduler-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U psg_user -d scheduler_db" ]
+      interval: 20s
+      timeout: 5s
+      retries: 15
+      start_period: 10s
+
+  scrapper-postgres-migrate:
+    image: migrate/migrate
+    volumes:
+      - ./internal/infra/postgres/migrations:/migrations
+    command: [
+      "-path", "/migrations",
+      "-database", "postgres://psg_user:psg_pass@scheduler-postgres:5432/scheduler_db?sslmode=disable",
+      "up"
+    ]
+    depends_on:
+      scheduler-postgres:
+        condition: service_healthy
+
+volumes:
+  scheduler-postgres-data:
