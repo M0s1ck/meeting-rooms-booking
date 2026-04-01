@@ -16,7 +16,7 @@ services:
       retries: 15
       start_period: 10s
 
-  scrapper-postgres-migrate:
+  scheduler-postgres-migrate:
     image: migrate/migrate
     volumes:
       - ./internal/infra/postgres/migrations:/migrations
@@ -28,6 +28,25 @@ services:
     depends_on:
       scheduler-postgres:
         condition: service_healthy
+
+  meeting-scheduler:
+    build:
+      context: .
+    environment:
+      - POSTGRES_DB=scheduler_db
+      - POSTGRES_USER=psg_user
+      - POSTGRES_PASSWORD=psg_pass
+      - POSTGRES_HOST=scheduler-postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_MAX_POOL_CONNS=10
+      - POSTGRES_MIN_POOL_CONNS=2
+    ports:
+      - "8080:8080"   # http
+    depends_on:
+      scheduler-postgres:
+        condition: service_healthy
+      scheduler-postgres-migrate:
+        condition: service_completed_successfully
 
 volumes:
   scheduler-postgres-data:
