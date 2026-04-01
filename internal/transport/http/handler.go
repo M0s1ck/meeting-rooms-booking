@@ -2,15 +2,30 @@ package http
 
 import (
 	"context"
+	"errors"
 
+	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/room"
+	httphelpers "github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/helpers"
+	httpmapper "github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/mapper"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/oapi"
+	createroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/create"
 )
 
-type StrictHandler struct {
+type createRoomUsecase interface {
+	Execute(ctx context.Context, req *createroom.Request) (*createroom.Response, error)
 }
 
-func NewHandler() *StrictHandler {
-	return &StrictHandler{}
+type StrictHandler struct {
+	createRoom createRoomUsecase
+}
+
+func NewHandler(
+	createRoomUC createRoomUsecase,
+) *StrictHandler {
+
+	return &StrictHandler{
+		createRoom: createRoomUC,
+	}
 }
 
 func (s StrictHandler) GetRoomsList(ctx context.Context, request oapi.GetRoomsListRequestObject) (oapi.GetRoomsListResponseObject, error) {
@@ -19,8 +34,32 @@ func (s StrictHandler) GetRoomsList(ctx context.Context, request oapi.GetRoomsLi
 }
 
 func (s StrictHandler) PostRoomsCreate(ctx context.Context, request oapi.PostRoomsCreateRequestObject) (oapi.PostRoomsCreateResponseObject, error) {
-	//TODO implement me
-	panic("implement me")
+	ucReq, err := httpmapper.ToCreateRoomRequest(request.Body)
+	if err != nil {
+		return oapi.PostRoomsCreate400JSONResponse(
+			httphelpers.NewErrorResponse(oapi.INVALIDREQUEST, err.Error()),
+		), nil
+	}
+
+	ucResp, err := s.createRoom.Execute(ctx, ucReq)
+	if err != nil {
+		switch {
+
+		case errors.Is(err, room.ErrEmptyName),
+			errors.Is(err, room.ErrInvalidCapacity):
+
+			return oapi.PostRoomsCreate400JSONResponse(
+				httphelpers.NewErrorResponse(oapi.INVALIDREQUEST, err.Error()),
+			), nil
+
+		default:
+			return oapi.PostRoomsCreate500JSONResponse(
+				httphelpers.NewInternalErrorResponse("create room internal server error"),
+			), nil
+		}
+	}
+
+	return httpmapper.ToCreateRoomResponse(ucResp), nil
 }
 
 func (s StrictHandler) PostRoomsRoomIdScheduleCreate(ctx context.Context, request oapi.PostRoomsRoomIdScheduleCreateRequestObject) (oapi.PostRoomsRoomIdScheduleCreateResponseObject, error) {
@@ -66,4 +105,10 @@ func (s StrictHandler) PostLogin(ctx context.Context, request oapi.PostLoginRequ
 func (s StrictHandler) PostRegister(ctx context.Context, request oapi.PostRegisterRequestObject) (oapi.PostRegisterResponseObject, error) {
 	//TODO implement me
 	panic("implement me")
+}
+
+func newPostRoomsCreateInternalError(message string) oapi.PostRoomsCreate500JSONResponse {
+	return oapi.PostRoomsCreate500JSONResponse(
+		httphelpers.NewInternalErrorResponse(message),
+	)
 }

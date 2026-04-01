@@ -10,8 +10,10 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/config"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/infra/postgres"
+	"github.com/internships-backend/test-backend-M0s1ck/internal/infra/postgres/repository"
 	httpapi "github.com/internships-backend/test-backend-M0s1ck/internal/transport/http"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/oapi"
+	createroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/create"
 )
 
 type App struct {
@@ -26,9 +28,15 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 		return nil, err
 	}
 
-	_ = db
+	// txManager := postgres.NewTxManager(db)
 
-	handler := httpapi.NewHandler()
+	roomRepo := repository.NewRoomRepo(db)
+
+	createRoom := createroom.NewUsecase(roomRepo)
+
+	handler := httpapi.NewHandler(
+		createRoom,
+	)
 
 	router := chi.NewRouter()
 
