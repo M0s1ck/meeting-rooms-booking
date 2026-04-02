@@ -19,6 +19,7 @@ import (
 	"github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/oapi"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/auth/dummylogin"
 	createroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/create"
+	listroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/list"
 )
 
 type App struct {
@@ -42,9 +43,11 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 
 	dummyLogin := dummylogin.NewUsecase(tokenManager)
 	createRoom := createroom.NewUsecase(roomRepo)
+	listRoom := listroom.NewUsecase(roomRepo)
 
 	handler := httpapi.NewHandler(
 		createRoom,
+		listRoom,
 		dummyLogin,
 	)
 

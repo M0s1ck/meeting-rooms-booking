@@ -13,10 +13,15 @@ import (
 	"github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/oapi"
 	dummylogin "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/auth/dummylogin"
 	createroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/create"
+	listroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/list"
 )
 
 type createRoomUsecase interface {
 	Execute(ctx context.Context, req *createroom.Request, identity *authjwt.Identity) (*createroom.Response, error)
+}
+
+type listRoomUsecase interface {
+	Execute(ctx context.Context) (*listroom.Response, error)
 }
 
 type dummyLoginUsecase interface {
@@ -25,16 +30,19 @@ type dummyLoginUsecase interface {
 
 type StrictHandler struct {
 	createRoom createRoomUsecase
+	listRoom   listRoomUsecase
 	dummyLogin dummyLoginUsecase
 }
 
 func NewHandler(
 	createRoom createRoomUsecase,
+	listRoom listRoomUsecase,
 	dummyLogin dummyLoginUsecase,
 ) *StrictHandler {
 
 	return &StrictHandler{
 		createRoom: createRoom,
+		listRoom:   listRoom,
 		dummyLogin: dummyLogin,
 	}
 }
@@ -75,9 +83,15 @@ func (s *StrictHandler) PostRoomsCreate(ctx context.Context, request oapi.PostRo
 	return mapper.ToCreateRoomResponse(ucResp), nil
 }
 
-func (s *StrictHandler) GetRoomsList(ctx context.Context, request oapi.GetRoomsListRequestObject) (oapi.GetRoomsListResponseObject, error) {
-	//TODO implement me
-	panic("implement me")
+func (s *StrictHandler) GetRoomsList(ctx context.Context, _ oapi.GetRoomsListRequestObject) (oapi.GetRoomsListResponseObject, error) {
+	ucResp, err := s.listRoom.Execute(ctx)
+	if err != nil {
+		return oapi.GetRoomsList500JSONResponse(
+			helpers.NewInternalErrorResponse("list rooms internal server error"),
+		), nil
+	}
+
+	return mapper.ToListRoomsResponse(ucResp), nil
 }
 
 func (s *StrictHandler) PostRoomsRoomIdScheduleCreate(ctx context.Context, request oapi.PostRoomsRoomIdScheduleCreateRequestObject) (oapi.PostRoomsRoomIdScheduleCreateResponseObject, error) {
