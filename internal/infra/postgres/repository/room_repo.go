@@ -4,23 +4,26 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/room"
-	"github.com/internships-backend/test-backend-M0s1ck/internal/infra/postgres"
+	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/room"
 )
 
 type RoomRepo struct {
-	db *pgxpool.Pool
+	db     *pgxpool.Pool
+	getter *trmpgx.CtxGetter
 }
 
-func NewRoomRepo(db *pgxpool.Pool) *RoomRepo {
+func NewRoomRepo(db *pgxpool.Pool, txGetter *trmpgx.CtxGetter) *RoomRepo {
 	return &RoomRepo{
-		db: db,
+		db:     db,
+		getter: txGetter,
 	}
 }
 
 func (r *RoomRepo) Create(ctx context.Context, rm *room.Room) error {
-	querier := postgres.GetQuerier(ctx, r.db)
+	querier := r.getter.DefaultTrOrDB(ctx, r.db)
 
 	const query = `INSERT INTO rooms (id, name, description, capacity, created_at)
 		VALUES ($1, $2, $3, $4, $5)`

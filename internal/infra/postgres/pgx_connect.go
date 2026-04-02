@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/internships-backend/test-backend-M0s1ck/internal/config"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/internships-backend/test-backend-M0s1ck/internal/config"
 )
 
 func Connect(ctx context.Context, cfg *config.Postgres) (*pgxpool.Pool, error) {

@@ -6,13 +6,18 @@ import (
 	"log/slog"
 	"net/http"
 
+	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+
 	"github.com/internships-backend/test-backend-M0s1ck/internal/config"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/infra/postgres"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/infra/postgres/repository"
+	"github.com/internships-backend/test-backend-M0s1ck/internal/service/authjwt"
 	httpapi "github.com/internships-backend/test-backend-M0s1ck/internal/transport/http"
+	appmiddleware "github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/middleware"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/oapi"
+	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/auth/dummylogin"
 	createroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/create"
 )
 
@@ -28,14 +33,19 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 		return nil, err
 	}
 
-	// txManager := postgres.NewTxManager(db)
+	//  txManager := manager.Must(trmpgx.NewDefaultFactory(db))
+	txGetter := trmpgx.DefaultCtxGetter
 
-	roomRepo := repository.NewRoomRepo(db)
+	tokenManager := authjwt.NewManager(cfg.JwtCfg)
 
+	roomRepo := repository.NewRoomRepo(db, txGetter)
+
+	dummyLogin := dummylogin.NewUsecase(tokenManager)
 	createRoom := createroom.NewUsecase(roomRepo)
 
 	handler := httpapi.NewHandler(
 		createRoom,
+		dummyLogin,
 	)
 
 	router := chi.NewRouter()
@@ -46,8 +56,10 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 		middleware.Logger,
 	)
 
+	strictMiddlewares := appmiddleware.NewStrictMiddlewares(tokenManager, logger)
+
 	oapi.HandlerFromMux(
-		oapi.NewStrictHandler(handler, nil),
+		oapi.NewStrictHandler(handler, strictMiddlewares),
 		router,
 	)
 

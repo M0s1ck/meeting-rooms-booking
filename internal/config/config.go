@@ -9,12 +9,14 @@ import (
 type Config struct {
 	HttpCfg *HttpCfg
 	Psg     *Postgres
+	JwtCfg  *JwtCfg
 }
 
 func Load() *Config {
 	return &Config{
 		HttpCfg: loadHttpCfg(),
 		Psg:     loadPsgCfg(),
+		JwtCfg:  loadJwtCfg(),
 	}
 }
 
