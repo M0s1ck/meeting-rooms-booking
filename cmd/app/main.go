@@ -39,7 +39,7 @@ func main() {
 	case <-ctx.Done():
 	case runErr := <-runErrCh:
 		if runErr != nil {
-			logger.Error("app stopped with error", "error", runErr)
+			logger.Error("app stopped with error", "err", runErr)
 			exitCode = 1
 		}
 		stop()

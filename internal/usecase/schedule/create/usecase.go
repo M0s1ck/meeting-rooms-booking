@@ -5,16 +5,34 @@ import (
 	"time"
 
 	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/schedule"
+	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/slot"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/user"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/service/authjwt"
+	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/common"
 )
 
+const slotGenHorizon = time.Hour * 24 * 14
+
 type Usecase struct {
-	repo scheduleRepo
+	slotGen   *slot.Generator
+	schedRepo scheduleRepo
+	slotRepo  slotRepo
+	txManager common.TxManager
 }
 
-func NewUsecase(repo scheduleRepo) *Usecase {
-	return &Usecase{repo: repo}
+func NewUsecase(
+	slotGen *slot.Generator,
+	schedRepo scheduleRepo,
+	slotRepo slotRepo,
+	txManager common.TxManager,
+) *Usecase {
+
+	return &Usecase{
+		slotGen:   slotGen,
+		schedRepo: schedRepo,
+		slotRepo:  slotRepo,
+		txManager: txManager,
+	}
 }
 
 func (u *Usecase) Execute(ctx context.Context, req *Request, identity *authjwt.Identity) (*Response, error) {
@@ -22,7 +40,7 @@ func (u *Usecase) Execute(ctx context.Context, req *Request, identity *authjwt.I
 		return nil, err
 	}
 
-	entity, err := schedule.New(
+	sched, err := schedule.New(
 		req.RoomID,
 		req.DaysOfWeek,
 		req.StartTime,
@@ -33,16 +51,25 @@ func (u *Usecase) Execute(ctx context.Context, req *Request, identity *authjwt.I
 		return nil, err
 	}
 
-	if err = u.repo.Create(ctx, entity); err != nil {
+	err = u.txManager.Do(ctx, func(ctx context.Context) error {
+		if err = u.schedRepo.Create(ctx, sched); err != nil {
+			return err
+		}
+
+		slots := u.slotGen.Generate(*sched, time.Now(), time.Now().Add(slotGenHorizon))
+		return u.slotRepo.Add(ctx, slots)
+	})
+
+	if err != nil {
 		return nil, err
 	}
 
 	return &Response{
-		ID:         entity.ID,
-		RoomID:     entity.RoomID,
-		DaysOfWeek: entity.DaysOfWeek,
-		StartTime:  entity.StartTime,
-		EndTime:    entity.EndTime,
+		ID:         sched.ID,
+		RoomID:     sched.RoomID,
+		DaysOfWeek: sched.DaysOfWeek,
+		StartTime:  sched.StartTime,
+		EndTime:    sched.EndTime,
 	}, nil
 }
 

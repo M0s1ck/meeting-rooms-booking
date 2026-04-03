@@ -4,8 +4,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/schedule"
 )
 
@@ -75,7 +73,7 @@ func addTailingDate(slots []Slot, sched schedule.Schedule, to time.Time, now tim
 
 func addContinuousSlots(slots []Slot, sched schedule.Schedule, begin, end time.Time, now time.Time) []Slot {
 	for start := begin; start.Add(Duration).Before(end) || start.Add(Duration).Equal(end); start = start.Add(Duration) {
-		slot, err := New(uuid.New(), sched.RoomID, start, now)
+		slot, err := New(sched.RoomID, start, now)
 		if err != nil {
 			continue
 		}

@@ -1,5 +1,6 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS citext;
+CREATE EXTENSION IF NOT EXISTS btree_gist;
 
 CREATE TYPE user_role AS ENUM ('admin', 'user');
 CREATE TYPE booking_status AS ENUM ('active', 'cancelled');
@@ -66,15 +67,17 @@ CREATE TABLE slots (
     start_at timestamptz NOT NULL,
     end_at timestamptz NOT NULL,
     created_at timestamptz NOT NULL DEFAULT NOW(),
-    CONSTRAINT slots_time_order CHECK (end_at > start_at)
+    CONSTRAINT slots_time_order CHECK (end_at > start_at),
+    CONSTRAINT ex_slots_no_overlap EXCLUDE USING gist (
+        room_id WITH =,
+        tstzrange(start_at, end_at, '[)') WITH &&)
 );
-
-CREATE INDEX idx_slots_room_start_at
-    ON slots (room_id, start_at)
-    INCLUDE (id, end_at);
 
 CREATE INDEX idx_slots_start_at
     ON slots (start_at);
+
+CREATE UNIQUE INDEX ux_slots_room_start_at
+    ON slots (room_id, start_at);
 
 CREATE TABLE bookings (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

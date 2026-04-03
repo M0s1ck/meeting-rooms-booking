@@ -237,11 +237,6 @@ func newSched(days []time.Weekday, start, end string, createdAt time.Time) *sche
 
 func newSlot(roomID uuid.UUID, start string) slot.Slot {
 	startAt, _ := time.Parse(timeLayout, start)
-	endAt := startAt.Add(slot.Duration)
-
-	return slot.Slot{
-		RoomID:  roomID,
-		StartAt: startAt,
-		EndAt:   endAt,
-	}
+	res, _ := slot.New(roomID, startAt, startAt)
+	return *res
 }

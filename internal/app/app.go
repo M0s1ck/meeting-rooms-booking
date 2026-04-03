@@ -7,8 +7,10 @@ import (
 	"net/http"
 
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
+	"github.com/avito-tech/go-transaction-manager/trm/v2/manager"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/slot"
 
 	"github.com/internships-backend/test-backend-M0s1ck/internal/config"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/infra/postgres"
@@ -35,18 +37,21 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 		return nil, err
 	}
 
-	//  txManager := manager.Must(trmpgx.NewDefaultFactory(db))
+	txManager := manager.Must(trmpgx.NewDefaultFactory(db))
 	txGetter := trmpgx.DefaultCtxGetter
 
 	tokenManager := authjwt.NewManager(cfg.JwtCfg)
 
 	roomRepo := repository.NewRoomRepo(db, txGetter)
 	shedRepo := repository.NewScheduleRepo(db, txGetter)
+	slotRepo := repository.NewSlotRepo(db, txGetter)
+
+	slotGen := new(slot.Generator)
 
 	dummyLogin := dummylogin.NewUsecase(tokenManager)
 	createRoom := createroom.NewUsecase(roomRepo)
 	listRoom := listroom.NewUsecase(roomRepo)
-	createSchedule := createschedule.NewUsecase(shedRepo)
+	createSchedule := createschedule.NewUsecase(slotGen, shedRepo, slotRepo, txManager)
 
 	handler := httpapi.NewHandler(
 		createRoom,
