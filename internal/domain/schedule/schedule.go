@@ -14,6 +14,17 @@ type Schedule struct {
 	StartTime  TimeOfDay
 	EndTime    TimeOfDay
 	CreatedAt  time.Time
+
+	WeekDaysSet map[time.Weekday]struct{}
+}
+
+func (s *Schedule) HasWeekday(weekday time.Weekday) bool {
+	if s.WeekDaysSet == nil {
+		s.WeekDaysSet = formWeekdaySet(s.DaysOfWeek)
+	}
+
+	_, ok := s.WeekDaysSet[weekday]
+	return ok
 }
 
 func New(roomID uuid.UUID, daysOfWeek []int, startTime TimeOfDay, endTime TimeOfDay, now time.Time) (*Schedule, error) {
@@ -63,4 +74,18 @@ func normalizeDaysOfWeek(daysOfWeek []int) ([]int, error) {
 
 	slices.Sort(normalized)
 	return normalized, nil
+}
+
+func formWeekdaySet(days []int) map[time.Weekday]struct{} {
+	wds := make(map[time.Weekday]struct{})
+
+	for _, weekDay := range days {
+		wd := time.Weekday(weekDay)
+		if wd == 7 {
+			wd = time.Sunday
+		}
+		wds[wd] = struct{}{}
+	}
+
+	return wds
 }

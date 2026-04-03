@@ -6,9 +6,10 @@ import (
 	"fmt"
 
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
-	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/schedule"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/schedule"
 )
 
 type ScheduleRepo struct {

@@ -33,3 +33,11 @@ func (t TimeOfDay) Before(other TimeOfDay) bool {
 func (t TimeOfDay) Minutes() int {
 	return t.minutes
 }
+
+func (t TimeOfDay) Hours() int {
+	return t.minutes / 60
+}
+
+func (t TimeOfDay) MinutesOfHour() int {
+	return t.minutes % 60
+}
