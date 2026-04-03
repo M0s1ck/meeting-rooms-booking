@@ -5,15 +5,17 @@ import (
 	"errors"
 
 	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/room"
+	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/schedule"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/user"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/service/authjwt"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/helpers"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/mapper"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/middleware"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/oapi"
-	dummylogin "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/auth/dummylogin"
+	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/auth/dummylogin"
 	createroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/create"
 	listroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/list"
+	createschedule "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/schedule/create"
 )
 
 type createRoomUsecase interface {
@@ -24,26 +26,33 @@ type listRoomUsecase interface {
 	Execute(ctx context.Context) (*listroom.Response, error)
 }
 
+type createScheduleUsecase interface {
+	Execute(ctx context.Context, req *createschedule.Request, identity *authjwt.Identity) (*createschedule.Response, error)
+}
+
 type dummyLoginUsecase interface {
 	Execute(ctx context.Context, req *dummylogin.Request) (*dummylogin.Response, error)
 }
 
 type StrictHandler struct {
-	createRoom createRoomUsecase
-	listRoom   listRoomUsecase
-	dummyLogin dummyLoginUsecase
+	createRoom     createRoomUsecase
+	listRoom       listRoomUsecase
+	createSchedule createScheduleUsecase
+	dummyLogin     dummyLoginUsecase
 }
 
 func NewHandler(
 	createRoom createRoomUsecase,
 	listRoom listRoomUsecase,
+	createSchedule createScheduleUsecase,
 	dummyLogin dummyLoginUsecase,
 ) *StrictHandler {
 
 	return &StrictHandler{
-		createRoom: createRoom,
-		listRoom:   listRoom,
-		dummyLogin: dummyLogin,
+		createRoom:     createRoom,
+		listRoom:       listRoom,
+		createSchedule: createSchedule,
+		dummyLogin:     dummyLogin,
 	}
 }
 
@@ -95,8 +104,50 @@ func (s *StrictHandler) GetRoomsList(ctx context.Context, _ oapi.GetRoomsListReq
 }
 
 func (s *StrictHandler) PostRoomsRoomIdScheduleCreate(ctx context.Context, request oapi.PostRoomsRoomIdScheduleCreateRequestObject) (oapi.PostRoomsRoomIdScheduleCreateResponseObject, error) {
-	//TODO implement me
-	panic("implement me")
+	ucReq, err := mapper.ToCreateScheduleRequest(request.RoomId, request.Body)
+	if err != nil {
+		return oapi.PostRoomsRoomIdScheduleCreate400JSONResponse(
+			helpers.NewErrorResponse(oapi.INVALIDREQUEST, err.Error()),
+		), nil
+	}
+
+	identity := middleware.MustIdentityFromContext(ctx)
+
+	ucResp, err := s.createSchedule.Execute(ctx, ucReq, identity)
+	if err != nil {
+		switch {
+		case errors.Is(err, user.ErrAdminRoleRequired):
+			return oapi.PostRoomsRoomIdScheduleCreate403JSONResponse(
+				helpers.NewErrorResponse(oapi.FORBIDDEN, err.Error()),
+			), nil
+
+		case errors.Is(err, schedule.ErrRoomNotFound):
+			return oapi.PostRoomsRoomIdScheduleCreate404JSONResponse(
+				helpers.NewErrorResponse(oapi.ROOMNOTFOUND, err.Error()),
+			), nil
+
+		case errors.Is(err, schedule.ErrAlreadyExists):
+			return oapi.PostRoomsRoomIdScheduleCreate409JSONResponse(
+				helpers.NewErrorResponse(oapi.SCHEDULEEXISTS, err.Error()),
+			), nil
+
+		case errors.Is(err, schedule.ErrRoomIDRequired),
+			errors.Is(err, schedule.ErrEmptyDaysOfWeek),
+			errors.Is(err, schedule.ErrInvalidDayOfWeek),
+			errors.Is(err, schedule.ErrInvalidTimeFmt),
+			errors.Is(err, schedule.ErrInvalidTimeRange):
+			return oapi.PostRoomsRoomIdScheduleCreate400JSONResponse(
+				helpers.NewErrorResponse(oapi.INVALIDREQUEST, err.Error()),
+			), nil
+
+		default:
+			return oapi.PostRoomsRoomIdScheduleCreate500JSONResponse(
+				helpers.NewInternalErrorResponse("create schedule internal server error"),
+			), nil
+		}
+	}
+
+	return mapper.ToCreateScheduleResponse(ucResp), nil
 }
 
 func (s *StrictHandler) GetRoomsRoomIdSlotsList(ctx context.Context, request oapi.GetRoomsRoomIdSlotsListRequestObject) (oapi.GetRoomsRoomIdSlotsListResponseObject, error) {

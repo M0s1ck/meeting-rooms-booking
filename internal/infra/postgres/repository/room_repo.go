@@ -29,7 +29,7 @@ func (r *RoomRepo) Create(ctx context.Context, rm *room.Room) error {
 	querier := r.getter.DefaultTrOrDB(ctx, r.db)
 
 	const query = `INSERT INTO rooms (id, name, description, capacity, created_at)
-		VALUES ($1, $2, $3, $4, $5)`
+        VALUES ($1, $2, $3, $4, $5)`
 
 	_, err := querier.Exec(ctx, query,
 		rm.ID, rm.Name, rm.Description, rm.Capacity, rm.CreatedAt)
@@ -45,10 +45,10 @@ func (r *RoomRepo) List(ctx context.Context) ([]*room.Room, error) {
 	querier := r.getter.DefaultTrOrDB(ctx, r.db)
 
 	const query = `
-		SELECT id, name, description, capacity, created_at, updated_at
-		FROM rooms
-		ORDER BY created_at ASC, id ASC
-	`
+        SELECT id, name, description, capacity, created_at, updated_at
+        FROM rooms
+        ORDER BY created_at, id
+    `
 
 	rows, err := querier.Query(ctx, query)
 	if err != nil {

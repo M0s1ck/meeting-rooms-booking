@@ -20,6 +20,7 @@ import (
 	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/auth/dummylogin"
 	createroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/create"
 	listroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/list"
+	createschedule "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/schedule/create"
 )
 
 type App struct {
@@ -40,14 +41,17 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 	tokenManager := authjwt.NewManager(cfg.JwtCfg)
 
 	roomRepo := repository.NewRoomRepo(db, txGetter)
+	shedRepo := repository.NewScheduleRepo(db, txGetter)
 
 	dummyLogin := dummylogin.NewUsecase(tokenManager)
 	createRoom := createroom.NewUsecase(roomRepo)
 	listRoom := listroom.NewUsecase(roomRepo)
+	createSchedule := createschedule.NewUsecase(shedRepo)
 
 	handler := httpapi.NewHandler(
 		createRoom,
 		listRoom,
+		createSchedule,
 		dummyLogin,
 	)
 
