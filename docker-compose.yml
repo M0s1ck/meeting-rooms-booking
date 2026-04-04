@@ -40,6 +40,7 @@ services:
       - POSTGRES_PORT=5432
       - POSTGRES_MAX_POOL_CONNS=10
       - POSTGRES_MIN_POOL_CONNS=2
+      - SLOT_HORIZON=336h
     ports:
       - "8080:8080"   # http
     depends_on:

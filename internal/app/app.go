@@ -27,6 +27,7 @@ import (
 	createroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/create"
 	listroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/list"
 	createschedule "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/schedule/create"
+	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/slot/ensureroomdate"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/slot/fillhorizon"
 	listslot "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/slot/list"
 )
@@ -55,14 +56,20 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 	userRepo := repository.NewUserRepo(db, txGetter)
 	bookingRepo := repository.NewBookingRepo(db, txGetter)
 
-	slotGen := new(slot.Generator)
+	slotGen := slot.NewGenerator()
+
+	slotHorizon := 14 * 24 * time.Hour
+	if cfg.SlotCfg != nil && cfg.SlotCfg.Horizon > 0 {
+		slotHorizon = cfg.SlotCfg.Horizon
+	}
 
 	dummyLogin := dummylogin.NewUsecase(tokenManager)
 	createRoom := createroom.NewUsecase(roomRepo)
 	listRoom := listroom.NewUsecase(roomRepo)
-	createSchedule := createschedule.NewUsecase(slotGen, shedRepo, slotRepo, txManager)
-	fillSlotHorizon := fillhorizon.NewUsecase(slotGen, slotRepo, shedRepo, txManager)
-	listSlots := listslot.NewUsecase(roomRepo, slotRepo)
+	createSchedule := createschedule.NewUsecase(slotGen, shedRepo, slotRepo, txManager, slotHorizon)
+	fillSlotHorizon := fillhorizon.NewUsecase(slotGen, slotRepo, shedRepo, txManager, slotHorizon)
+	ensureRoomDate := ensureroomdate.NewUsecase(slotGen, shedRepo, slotRepo, txManager)
+	listSlots := listslot.NewUsecase(roomRepo, slotRepo, ensureRoomDate, slotHorizon)
 	createBooking := createbooking.NewUsecase(bookingRepo, slotRepo, userRepo, txManager)
 
 	cronSched, err := cron.New(logger)

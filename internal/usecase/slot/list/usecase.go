@@ -2,19 +2,31 @@ package list
 
 import (
 	"context"
+	"time"
 
 	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/room"
+	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/slot/ensureroomdate"
 )
 
 type Usecase struct {
-	roomRepo roomRepo
-	slotRepo slotRepo
+	roomRepo         roomRepo
+	slotRepo         slotRepo
+	ensureDateFilled ensureDateFilledUsecase
+	slotHorizon      time.Duration
 }
 
-func NewUsecase(roomRepo roomRepo, slotRepo slotRepo) *Usecase {
+func NewUsecase(
+	roomRepo roomRepo,
+	slotRepo slotRepo,
+	ensureDateFilled ensureDateFilledUsecase,
+	slotHorizon time.Duration,
+) *Usecase {
+
 	return &Usecase{
-		roomRepo: roomRepo,
-		slotRepo: slotRepo,
+		roomRepo:         roomRepo,
+		slotRepo:         slotRepo,
+		ensureDateFilled: ensureDateFilled,
+		slotHorizon:      slotHorizon,
 	}
 }
 
@@ -26,6 +38,19 @@ func (u *Usecase) Execute(ctx context.Context, req *Request) (*Response, error) 
 
 	if !exists {
 		return nil, room.ErrNotFound
+	}
+
+	now := time.Now().UTC()
+
+	if u.ensureDateFilled != nil && isAfterSlotHorizon(req.Date, now, u.slotHorizon) {
+		fillReq := &ensureroomdate.Request{
+			RoomID: req.RoomID,
+			Date:   req.Date,
+		}
+
+		if err := u.ensureDateFilled.Execute(ctx, fillReq); err != nil {
+			return nil, err
+		}
 	}
 
 	slots, err := u.slotRepo.ListAvailableByRoomAndDate(ctx, req.RoomID, req.Date)
@@ -47,4 +72,11 @@ func (u *Usecase) Execute(ctx context.Context, req *Request) (*Response, error) 
 	}
 
 	return resp, nil
+}
+
+func isAfterSlotHorizon(date, now time.Time, slotHorizon time.Duration) bool {
+	dayStart := time.Date(date.UTC().Year(), date.UTC().Month(), date.UTC().Day(), 0, 0, 0, 0, time.UTC)
+	dayEnd := dayStart.AddDate(0, 0, 1)
+
+	return dayEnd.After(now.Add(slotHorizon))
 }

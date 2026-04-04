@@ -10,6 +10,10 @@ import (
 type Generator struct {
 }
 
+func NewGenerator() *Generator {
+	return &Generator{}
+}
+
 func (g *Generator) Generate(sched schedule.Schedule, from, to time.Time) []Slot {
 	slots := make([]Slot, 0)
 	if from.After(to) || from.Equal(to) {

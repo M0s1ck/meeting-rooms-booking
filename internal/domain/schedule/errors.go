@@ -9,5 +9,5 @@ var (
 	ErrInvalidTimeRange = errors.New("start time must be before end time")
 	ErrInvalidTimeFmt   = errors.New("time must be in HH:MM format")
 	ErrAlreadyExists    = errors.New("schedule for this room already exists")
-	ErrRoomNotFound     = errors.New("room not found")
+	ErrNotFound         = errors.New("schedule not found")
 )

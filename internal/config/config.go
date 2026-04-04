@@ -10,6 +10,7 @@ type Config struct {
 	HttpCfg *HttpCfg
 	Psg     *Postgres
 	JwtCfg  *JwtCfg
+	SlotCfg *SlotCfg
 }
 
 func Load() *Config {
@@ -17,6 +18,7 @@ func Load() *Config {
 		HttpCfg: loadHttpCfg(),
 		Psg:     loadPsgCfg(),
 		JwtCfg:  loadJwtCfg(),
+		SlotCfg: loadSlotCfg(),
 	}
 }
 

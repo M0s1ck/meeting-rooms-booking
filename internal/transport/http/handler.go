@@ -139,7 +139,7 @@ func (s *StrictHandler) PostRoomsRoomIdScheduleCreate(ctx context.Context, reque
 				helpers.NewErrorResponse(oapi.FORBIDDEN, err.Error()),
 			), nil
 
-		case errors.Is(err, schedule.ErrRoomNotFound):
+		case errors.Is(err, room.ErrNotFound):
 			return oapi.PostRoomsRoomIdScheduleCreate404JSONResponse(
 				helpers.NewErrorResponse(oapi.ROOMNOTFOUND, err.Error()),
 			), nil

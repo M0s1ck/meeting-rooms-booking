@@ -11,13 +11,12 @@ import (
 	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/common"
 )
 
-const slotGenHorizon = time.Hour * 24 * 14
-
 type Usecase struct {
-	slotGen   *slot.Generator
-	schedRepo scheduleRepo
-	slotRepo  slotRepo
-	txManager common.TxManager
+	slotGen     *slot.Generator
+	schedRepo   scheduleRepo
+	slotRepo    slotRepo
+	txManager   common.TxManager
+	slotHorizon time.Duration
 }
 
 func NewUsecase(
@@ -25,13 +24,15 @@ func NewUsecase(
 	schedRepo scheduleRepo,
 	slotRepo slotRepo,
 	txManager common.TxManager,
+	slotHorizon time.Duration,
 ) *Usecase {
 
 	return &Usecase{
-		slotGen:   slotGen,
-		schedRepo: schedRepo,
-		slotRepo:  slotRepo,
-		txManager: txManager,
+		slotGen:     slotGen,
+		schedRepo:   schedRepo,
+		slotRepo:    slotRepo,
+		txManager:   txManager,
+		slotHorizon: slotHorizon,
 	}
 }
 
@@ -58,7 +59,7 @@ func (u *Usecase) Execute(ctx context.Context, req *Request, identity *authjwt.I
 			return err
 		}
 
-		slots := u.slotGen.Generate(*sched, now, now.Add(slotGenHorizon))
+		slots := u.slotGen.Generate(*sched, now, now.Add(u.slotHorizon))
 		return u.slotRepo.Add(ctx, slots)
 	})
 
