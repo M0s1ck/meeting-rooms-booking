@@ -27,7 +27,7 @@ func ToCreateRoomResponse(resp *createroom.Response) oapi.PostRoomsCreate201JSON
 		return oapi.PostRoomsCreate201JSONResponse{}
 	}
 
-	createdAt := resp.CreatedAt
+	createdAt := resp.CreatedAt.UTC()
 
 	return oapi.PostRoomsCreate201JSONResponse{
 		Room: &oapi.Room{
@@ -47,7 +47,7 @@ func ToListRoomsResponse(resp *listroom.Response) oapi.GetRoomsList200JSONRespon
 
 	rooms := make([]oapi.Room, 0, len(resp.Rooms))
 	for _, item := range resp.Rooms {
-		createdAt := item.CreatedAt
+		createdAt := item.CreatedAt.UTC()
 
 		rooms = append(rooms, oapi.Room{
 			Id:          item.ID,

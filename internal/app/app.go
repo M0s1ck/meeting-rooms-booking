@@ -24,6 +24,7 @@ import (
 	"github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/oapi"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/auth/dummylogin"
 	createbooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/create"
+	listbooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/list"
 	createroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/create"
 	listroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/list"
 	createschedule "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/schedule/create"
@@ -71,6 +72,7 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 	ensureRoomDate := ensureroomdate.NewUsecase(slotGen, shedRepo, slotRepo, txManager)
 	listSlots := listslot.NewUsecase(roomRepo, slotRepo, ensureRoomDate, slotHorizon)
 	createBooking := createbooking.NewUsecase(bookingRepo, slotRepo, userRepo, txManager)
+	listBooking := listbooking.NewUsecase(bookingRepo)
 
 	cronSched, err := cron.New(logger)
 	if err != nil {
@@ -87,14 +89,15 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 		return nil, err
 	}
 
-	handler := httpapi.NewHandler(
-		createRoom,
-		listRoom,
-		createSchedule,
-		listSlots,
-		createBooking,
-		dummyLogin,
-	)
+	handler := httpapi.NewHandler(httpapi.HandlerDeps{
+		CreateRoom:     createRoom,
+		ListRoom:       listRoom,
+		CreateSchedule: createSchedule,
+		ListSlot:       listSlots,
+		CreateBooking:  createBooking,
+		ListBooking:    listBooking,
+		DummyLogin:     dummyLogin,
+	})
 
 	router := chi.NewRouter()
 

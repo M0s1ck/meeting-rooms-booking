@@ -51,3 +51,68 @@ func (r *BookingRepo) Create(ctx context.Context, b *booking.Booking) error {
 
 	return nil
 }
+
+func (r *BookingRepo) List(ctx context.Context, page, pageSize int) ([]booking.Booking, int, error) {
+	querier := r.getter.DefaultTrOrDB(ctx, r.db)
+
+	const countQuery = `SELECT COUNT(*) FROM bookings`
+
+	var total int
+	if err := querier.QueryRow(ctx, countQuery).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count bookings: %w", err)
+	}
+
+	offset := (page - 1) * pageSize
+
+	const listQuery = `
+		SELECT id, slot_id, user_id, status, conference_link, created_at
+		FROM bookings
+		ORDER BY created_at DESC, id DESC
+		LIMIT $1 OFFSET $2
+	`
+
+	rows, err := querier.Query(ctx, listQuery, pageSize, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list bookings: %w", err)
+	}
+	defer rows.Close()
+
+	bookings := make([]booking.Booking, 0, pageSize)
+	for rows.Next() {
+		item, scanErr := scanBooking(rows)
+		if scanErr != nil {
+			return nil, 0, fmt.Errorf("list bookings: %w", scanErr)
+		}
+
+		bookings = append(bookings, *item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("list bookings: %w", err)
+	}
+
+	return bookings, total, nil
+}
+
+type bookingScanner interface {
+	Scan(dest ...any) error
+}
+
+func scanBooking(scanner bookingScanner) (*booking.Booking, error) {
+	var b booking.Booking
+	var statusRaw string
+
+	if err := scanner.Scan(
+		&b.ID,
+		&b.SlotID,
+		&b.UserID,
+		&statusRaw,
+		&b.ConferenceLink,
+		&b.CreatedAt,
+	); err != nil {
+		return nil, err
+	}
+
+	b.Status = booking.Status(statusRaw)
+	return &b, nil
+}
