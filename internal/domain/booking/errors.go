@@ -9,4 +9,6 @@ var (
 	ErrAlreadyBooked   = errors.New("slot is already booked")
 	ErrInvalidPage     = errors.New("page must be greater than or equal to 1")
 	ErrInvalidPageSize = errors.New("page size must be between 1 and 100")
+	ErrNotFound        = errors.New("booking not found")
+	ErrCancelForbidden = errors.New("cannot cancel another user's booking")
 )

@@ -23,6 +23,7 @@ import (
 	appmiddleware "github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/middleware"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/oapi"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/auth/dummylogin"
+	cancelbooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/cancel"
 	createbooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/create"
 	listbooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/list"
 	mybooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/my"
@@ -75,6 +76,7 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 	createBooking := createbooking.NewUsecase(bookingRepo, slotRepo, userRepo, txManager)
 	listBooking := listbooking.NewUsecase(bookingRepo)
 	myBooking := mybooking.NewUsecase(bookingRepo)
+	cancelBooking := cancelbooking.NewUsecase(bookingRepo)
 
 	cronSched, err := cron.New(logger)
 	if err != nil {
@@ -99,6 +101,7 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 		CreateBooking:  createBooking,
 		ListBooking:    listBooking,
 		MyBooking:      myBooking,
+		CancelBooking:  cancelBooking,
 		DummyLogin:     dummyLogin,
 	})
 

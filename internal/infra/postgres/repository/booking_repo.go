@@ -8,6 +8,7 @@ import (
 
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -96,7 +97,7 @@ func (r *BookingRepo) ListFutureByUser(ctx context.Context, userID uuid.UUID, no
 		JOIN slots s ON s.id = b.slot_id
 		WHERE b.user_id = $1
 		  AND s.start_at >= $2
-		  AND b.status = 'active'	
+		  AND b.status = 'active'
 		ORDER BY s.start_at, b.id
 	`
 
@@ -112,6 +113,45 @@ func (r *BookingRepo) ListFutureByUser(ctx context.Context, userID uuid.UUID, no
 	}
 
 	return items, nil
+}
+
+func (r *BookingRepo) GetByID(ctx context.Context, id uuid.UUID) (*booking.Booking, error) {
+	querier := r.getter.DefaultTrOrDB(ctx, r.db)
+
+	const query = `
+		SELECT id, slot_id, user_id, status, conference_link, created_at
+		FROM bookings
+		WHERE id = $1
+	`
+
+	row := querier.QueryRow(ctx, query, id)
+	item, err := scanBooking(row)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, booking.ErrNotFound
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("get booking by id: %w", err)
+	}
+
+	return item, nil
+}
+
+func (r *BookingRepo) Cancel(ctx context.Context, id uuid.UUID, now time.Time) error {
+	querier := r.getter.DefaultTrOrDB(ctx, r.db)
+
+	const query = `
+		UPDATE bookings
+		SET status = 'cancelled', cancelled_at = $1
+		WHERE id = $2 AND status = 'active'
+	`
+
+	_, err := querier.Exec(ctx, query, now.UTC(), id)
+	if err != nil {
+		return fmt.Errorf("cancel booking: %w", err)
+	}
+
+	return nil
 }
 
 type bookingScanner interface {

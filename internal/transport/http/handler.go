@@ -23,6 +23,7 @@ type StrictHandler struct {
 	createBooking  createBookingUsecase
 	listBooking    listBookingUsecase
 	myBooking      myBookingUsecase
+	cancelBooking  cancelBookingUsecase
 	dummyLogin     dummyLoginUsecase
 }
 
@@ -35,6 +36,7 @@ func NewHandler(deps HandlerDeps) *StrictHandler {
 		createBooking:  deps.CreateBooking,
 		listBooking:    deps.ListBooking,
 		myBooking:      deps.MyBooking,
+		cancelBooking:  deps.CancelBooking,
 		dummyLogin:     deps.DummyLogin,
 	}
 }
@@ -233,7 +235,28 @@ func (s *StrictHandler) GetBookingsMy(ctx context.Context, _ oapi.GetBookingsMyR
 }
 
 func (s *StrictHandler) PostBookingsBookingIdCancel(ctx context.Context, request oapi.PostBookingsBookingIdCancelRequestObject) (oapi.PostBookingsBookingIdCancelResponseObject, error) {
-	panic("implement me")
+	identity := middleware.MustIdentityFromContext(ctx)
+
+	ucResp, err := s.cancelBooking.Execute(ctx, request.BookingId, identity)
+	if err != nil {
+		switch {
+		case errors.Is(err, user.ErrUserRoleRequired),
+			errors.Is(err, booking.ErrCancelForbidden):
+			return oapi.PostBookingsBookingIdCancel403JSONResponse(
+				helpers.NewErrorResponse(oapi.FORBIDDEN, err.Error()),
+			), nil
+		case errors.Is(err, booking.ErrNotFound):
+			return oapi.PostBookingsBookingIdCancel404JSONResponse(
+				helpers.NewErrorResponse(oapi.BOOKINGNOTFOUND, err.Error()),
+			), nil
+		default:
+			return oapi.PostBookingsBookingIdCancel500JSONResponse(
+				helpers.NewInternalErrorResponse("cancel booking internal server error"),
+			), nil
+		}
+	}
+
+	return mapper.ToCancelBookingResponse(ucResp), nil
 }
 
 func (s *StrictHandler) PostDummyLogin(ctx context.Context, request oapi.PostDummyLoginRequestObject) (oapi.PostDummyLoginResponseObject, error) {

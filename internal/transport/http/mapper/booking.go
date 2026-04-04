@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/oapi"
+	cancelbooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/cancel"
 	createbooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/create"
 	listbooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/list"
 	mybooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/my"
@@ -30,6 +31,25 @@ func ToCreateBookingResponse(resp *createbooking.Response) oapi.PostBookingsCrea
 	createdAt := resp.CreatedAt.UTC()
 
 	return oapi.PostBookingsCreate201JSONResponse{
+		Booking: &oapi.Booking{
+			Id:             resp.ID,
+			SlotId:         resp.SlotID,
+			UserId:         resp.UserID,
+			Status:         oapi.BookingStatus(resp.Status),
+			ConferenceLink: resp.ConferenceLink,
+			CreatedAt:      &createdAt,
+		},
+	}
+}
+
+func ToCancelBookingResponse(resp *cancelbooking.Response) oapi.PostBookingsBookingIdCancel200JSONResponse {
+	if resp == nil {
+		return oapi.PostBookingsBookingIdCancel200JSONResponse{}
+	}
+
+	createdAt := resp.CreatedAt.UTC()
+
+	return oapi.PostBookingsBookingIdCancel200JSONResponse{
 		Booking: &oapi.Booking{
 			Id:             resp.ID,
 			SlotId:         resp.SlotID,

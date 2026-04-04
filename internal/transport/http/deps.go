@@ -3,8 +3,11 @@ package http
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	"github.com/internships-backend/test-backend-M0s1ck/internal/service/authjwt"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/auth/dummylogin"
+	cancelbooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/cancel"
 	createbooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/create"
 	listbooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/list"
 	mybooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/my"
@@ -42,6 +45,10 @@ type myBookingUsecase interface {
 	Execute(ctx context.Context, identity *authjwt.Identity) (*mybooking.Response, error)
 }
 
+type cancelBookingUsecase interface {
+	Execute(ctx context.Context, bookingID uuid.UUID, identity *authjwt.Identity) (*cancelbooking.Response, error)
+}
+
 type dummyLoginUsecase interface {
 	Execute(ctx context.Context, req *dummylogin.Request) (*dummylogin.Response, error)
 }
@@ -54,5 +61,6 @@ type HandlerDeps struct {
 	CreateBooking  createBookingUsecase
 	ListBooking    listBookingUsecase
 	MyBooking      myBookingUsecase
+	CancelBooking  cancelBookingUsecase
 	DummyLogin     dummyLoginUsecase
 }

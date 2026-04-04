@@ -40,7 +40,7 @@ func (u *Usecase) Execute(ctx context.Context, req *Request, identity *authjwt.I
 
 	var created *booking.Booking
 	err := u.txManager.Do(ctx, func(ctx context.Context) error {
-		// TODO: think about it
+		//
 		if err := u.userRepo.Ensure(ctx, identity.UserID, identity.Role); err != nil {
 			return err
 		}
