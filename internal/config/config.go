@@ -7,18 +7,20 @@ import (
 )
 
 type Config struct {
-	HttpCfg *HttpCfg
-	Psg     *Postgres
-	JwtCfg  *JwtCfg
-	SlotCfg *SlotCfg
+	HttpCfg   *HttpCfg
+	Psg       *Postgres
+	JwtCfg    *JwtCfg
+	SlotCfg   *SlotCfg
+	BcryptCfg *BcryptCfg
 }
 
 func Load() *Config {
 	return &Config{
-		HttpCfg: loadHttpCfg(),
-		Psg:     loadPsgCfg(),
-		JwtCfg:  loadJwtCfg(),
-		SlotCfg: loadSlotCfg(),
+		HttpCfg:   loadHttpCfg(),
+		Psg:       loadPsgCfg(),
+		JwtCfg:    loadJwtCfg(),
+		SlotCfg:   loadSlotCfg(),
+		BcryptCfg: loadBcryptCfg(),
 	}
 }
 

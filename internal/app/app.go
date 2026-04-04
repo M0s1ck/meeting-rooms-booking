@@ -15,6 +15,7 @@ import (
 
 	"github.com/internships-backend/test-backend-M0s1ck/internal/config"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/slot"
+	infrabcrypt "github.com/internships-backend/test-backend-M0s1ck/internal/infra/bcrypt"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/infra/cron"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/infra/postgres"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/infra/postgres/repository"
@@ -23,6 +24,7 @@ import (
 	appmiddleware "github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/middleware"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/oapi"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/auth/dummylogin"
+	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/auth/register"
 	cancelbooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/cancel"
 	createbooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/create"
 	listbooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/list"
@@ -52,6 +54,7 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 	txGetter := trmpgx.DefaultCtxGetter
 
 	tokenManager := authjwt.NewManager(cfg.JwtCfg)
+	passHasher := infrabcrypt.NewHasher(cfg.BcryptCfg)
 
 	roomRepo := repository.NewRoomRepo(db, txGetter)
 	shedRepo := repository.NewScheduleRepo(db, txGetter)
@@ -66,7 +69,6 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 		slotHorizon = cfg.SlotCfg.Horizon
 	}
 
-	dummyLogin := dummylogin.NewUsecase(tokenManager)
 	createRoom := createroom.NewUsecase(roomRepo)
 	listRoom := listroom.NewUsecase(roomRepo)
 	createSchedule := createschedule.NewUsecase(slotGen, shedRepo, slotRepo, txManager, slotHorizon)
@@ -77,6 +79,8 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 	listBooking := listbooking.NewUsecase(bookingRepo)
 	myBooking := mybooking.NewUsecase(bookingRepo)
 	cancelBooking := cancelbooking.NewUsecase(bookingRepo)
+	dummyLogin := dummylogin.NewUsecase(tokenManager)
+	reg := register.NewUsecase(userRepo, passHasher)
 
 	cronSched, err := cron.New(logger)
 	if err != nil {
@@ -103,6 +107,7 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 		MyBooking:      myBooking,
 		CancelBooking:  cancelBooking,
 		DummyLogin:     dummyLogin,
+		Register:       reg,
 	})
 
 	router := chi.NewRouter()

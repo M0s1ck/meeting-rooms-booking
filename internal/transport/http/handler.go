@@ -25,6 +25,7 @@ type StrictHandler struct {
 	myBooking      myBookingUsecase
 	cancelBooking  cancelBookingUsecase
 	dummyLogin     dummyLoginUsecase
+	register       registerUsecase
 }
 
 func NewHandler(deps HandlerDeps) *StrictHandler {
@@ -38,6 +39,7 @@ func NewHandler(deps HandlerDeps) *StrictHandler {
 		myBooking:      deps.MyBooking,
 		cancelBooking:  deps.CancelBooking,
 		dummyLogin:     deps.DummyLogin,
+		register:       deps.Register,
 	}
 }
 
@@ -289,5 +291,35 @@ func (s *StrictHandler) PostLogin(ctx context.Context, request oapi.PostLoginReq
 }
 
 func (s *StrictHandler) PostRegister(ctx context.Context, request oapi.PostRegisterRequestObject) (oapi.PostRegisterResponseObject, error) {
-	panic("implement me")
+	ucReq, err := mapper.ToRegisterRequest(request.Body)
+	if err != nil {
+		return oapi.PostRegister400JSONResponse(
+			helpers.NewErrorResponse(oapi.INVALIDREQUEST, err.Error()),
+		), nil
+	}
+
+	ucResp, err := s.register.Execute(ctx, ucReq)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, user.ErrInvalidEmail),
+			errors.Is(err, user.ErrBlankEmail),
+			errors.Is(err, user.ErrInvalidRole),
+			errors.Is(err, user.ErrPassTooShort),
+			errors.Is(err, user.ErrPassTooLong),
+			errors.Is(err, user.ErrPassNoDigit),
+			errors.Is(err, user.ErrPassNoLetter),
+			errors.Is(err, user.ErrEmptyPassHash),
+			errors.Is(err, user.ErrEmailAlreadyTaken):
+			return oapi.PostRegister400JSONResponse(
+				helpers.NewErrorResponse(oapi.INVALIDREQUEST, err.Error()),
+			), nil
+		default:
+			return oapi.PostRegister500JSONResponse(
+				helpers.NewInternalErrorResponse("register internal server error"),
+			), nil
+		}
+	}
+
+	return mapper.ToRegisterResponse(ucResp), nil
 }
