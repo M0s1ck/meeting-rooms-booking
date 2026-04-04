@@ -16,6 +16,7 @@ import (
 	createroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/create"
 	listroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/list"
 	createschedule "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/schedule/create"
+	listslot "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/slot/list"
 )
 
 type createRoomUsecase interface {
@@ -30,6 +31,10 @@ type createScheduleUsecase interface {
 	Execute(ctx context.Context, req *createschedule.Request, identity *authjwt.Identity) (*createschedule.Response, error)
 }
 
+type listSlotUsecase interface {
+	Execute(ctx context.Context, req *listslot.Request) (*listslot.Response, error)
+}
+
 type dummyLoginUsecase interface {
 	Execute(ctx context.Context, req *dummylogin.Request) (*dummylogin.Response, error)
 }
@@ -38,6 +43,7 @@ type StrictHandler struct {
 	createRoom     createRoomUsecase
 	listRoom       listRoomUsecase
 	createSchedule createScheduleUsecase
+	listSlot       listSlotUsecase
 	dummyLogin     dummyLoginUsecase
 }
 
@@ -45,6 +51,7 @@ func NewHandler(
 	createRoom createRoomUsecase,
 	listRoom listRoomUsecase,
 	createSchedule createScheduleUsecase,
+	listSlot listSlotUsecase,
 	dummyLogin dummyLoginUsecase,
 ) *StrictHandler {
 
@@ -52,6 +59,7 @@ func NewHandler(
 		createRoom:     createRoom,
 		listRoom:       listRoom,
 		createSchedule: createSchedule,
+		listSlot:       listSlot,
 		dummyLogin:     dummyLogin,
 	}
 }
@@ -151,8 +159,23 @@ func (s *StrictHandler) PostRoomsRoomIdScheduleCreate(ctx context.Context, reque
 }
 
 func (s *StrictHandler) GetRoomsRoomIdSlotsList(ctx context.Context, request oapi.GetRoomsRoomIdSlotsListRequestObject) (oapi.GetRoomsRoomIdSlotsListResponseObject, error) {
-	//TODO implement me
-	panic("implement me")
+	ucReq := mapper.ToListSlotsRequest(request.RoomId, request.Params.Date)
+
+	ucResp, err := s.listSlot.Execute(ctx, ucReq)
+	if err != nil {
+		switch {
+		case errors.Is(err, room.ErrNotFound):
+			return oapi.GetRoomsRoomIdSlotsList404JSONResponse(
+				helpers.NewErrorResponse(oapi.ROOMNOTFOUND, err.Error()),
+			), nil
+		default:
+			return oapi.GetRoomsRoomIdSlotsList500JSONResponse(
+				helpers.NewInternalErrorResponse("list slots internal server error"),
+			), nil
+		}
+	}
+
+	return mapper.ToListSlotsResponse(ucResp), nil
 }
 
 func (s *StrictHandler) PostBookingsCreate(ctx context.Context, request oapi.PostBookingsCreateRequestObject) (oapi.PostBookingsCreateResponseObject, error) {

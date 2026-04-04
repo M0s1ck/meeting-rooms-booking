@@ -27,6 +27,7 @@ import (
 	listroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/list"
 	createschedule "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/schedule/create"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/slot/fillhorizon"
+	listslot "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/slot/list"
 )
 
 type App struct {
@@ -58,6 +59,7 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 	listRoom := listroom.NewUsecase(roomRepo)
 	createSchedule := createschedule.NewUsecase(slotGen, shedRepo, slotRepo, txManager)
 	fillSlotHorizon := fillhorizon.NewUsecase(slotGen, slotRepo, shedRepo, txManager)
+	listSlots := listslot.NewUsecase(roomRepo, slotRepo)
 
 	cronSched, err := cron.New(logger)
 	if err != nil {
@@ -78,6 +80,7 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 		createRoom,
 		listRoom,
 		createSchedule,
+		listSlots,
 		dummyLogin,
 	)
 

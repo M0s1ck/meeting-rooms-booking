@@ -83,6 +83,52 @@ func (r *SlotRepo) Add(ctx context.Context, slots []slot.Slot) error {
 	return nil
 }
 
+func (r *SlotRepo) ListAvailableByRoomAndDate(
+	ctx context.Context,
+	roomID uuid.UUID,
+	date time.Time,
+) ([]slot.Slot, error) {
+	querier := r.getter.DefaultTrOrDB(ctx, r.db)
+
+	const query = `
+		SELECT s.id, s.room_id, s.start_at, s.end_at, s.created_at
+		FROM slots s
+		LEFT JOIN bookings b
+			ON b.slot_id = s.id
+			AND b.status = 'active'
+		WHERE s.room_id = $1
+			AND s.start_at >= $2
+			AND s.start_at < $3
+			AND b.id IS NULL
+		ORDER BY s.start_at, s.id
+	`
+
+	lower := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+	upper := lower.AddDate(0, 0, 1)
+
+	rows, err := querier.Query(ctx, query, roomID, lower, upper)
+	if err != nil {
+		return nil, fmt.Errorf("list available slots by room and date: %w", err)
+	}
+	defer rows.Close()
+
+	slots := make([]slot.Slot, 0)
+	for rows.Next() {
+		item, scanErr := scanSlot(rows)
+		if scanErr != nil {
+			return nil, scanErr
+		}
+
+		slots = append(slots, *item)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("list available slots by room and date rows: %w", err)
+	}
+
+	return slots, nil
+}
+
 func (r *SlotRepo) GetLastEndAtByRooms(
 	ctx context.Context,
 	roomIDS []uuid.UUID,
@@ -120,4 +166,25 @@ func (r *SlotRepo) GetLastEndAtByRooms(
 	}
 
 	return roomEnd, nil
+}
+
+type slotScanner interface {
+	Scan(dest ...any) error
+}
+
+func scanSlot(scanner slotScanner) (*slot.Slot, error) {
+	var item slot.Slot
+
+	if err := scanner.Scan(
+		&item.ID,
+		&item.RoomID,
+		&item.StartAt,
+		&item.EndAt,
+		&item.CreatedAt,
+	); err != nil {
+		return nil, fmt.Errorf("scan slot: %w", err)
+	}
+
+	return &item, nil
+
 }

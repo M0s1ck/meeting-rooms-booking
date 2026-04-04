@@ -73,6 +73,19 @@ func (r *RoomRepo) List(ctx context.Context) ([]*room.Room, error) {
 	return rooms, nil
 }
 
+func (r *RoomRepo) Exists(ctx context.Context, roomID uuid.UUID) (bool, error) {
+	querier := r.getter.DefaultTrOrDB(ctx, r.db)
+
+	const query = `SELECT EXISTS(SELECT 1 FROM rooms WHERE id = $1)`
+
+	var exists bool
+	if err := querier.QueryRow(ctx, query, roomID).Scan(&exists); err != nil {
+		return false, fmt.Errorf("room exists: %w", err)
+	}
+
+	return exists, nil
+}
+
 type roomScanner interface {
 	Scan(dest ...any) error
 }
