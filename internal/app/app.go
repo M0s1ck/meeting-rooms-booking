@@ -5,14 +5,17 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"time"
 
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
 	"github.com/avito-tech/go-transaction-manager/trm/v2/manager"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/slot"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/internships-backend/test-backend-M0s1ck/internal/config"
+	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/slot"
+	"github.com/internships-backend/test-backend-M0s1ck/internal/infra/cron"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/infra/postgres"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/infra/postgres/repository"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/service/authjwt"
@@ -23,12 +26,14 @@ import (
 	createroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/create"
 	listroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/list"
 	createschedule "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/schedule/create"
+	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/slot/fillhorizon"
 )
 
 type App struct {
-	httpSrv *http.Server
-
-	logger *slog.Logger
+	httpSrv         *http.Server
+	cronSched       *cron.Scheduler
+	fillSlotHorizon *fillhorizon.Usecase
+	logger          *slog.Logger
 }
 
 func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, error) {
@@ -52,6 +57,22 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 	createRoom := createroom.NewUsecase(roomRepo)
 	listRoom := listroom.NewUsecase(roomRepo)
 	createSchedule := createschedule.NewUsecase(slotGen, shedRepo, slotRepo, txManager)
+	fillSlotHorizon := fillhorizon.NewUsecase(slotGen, slotRepo, shedRepo, txManager)
+
+	cronSched, err := cron.New(logger)
+	if err != nil {
+		return nil, err
+	}
+
+	err = cronSched.AddJob(ctx, time.Hour, "fill slot horizon tail", fillSlotHorizon.FillTail)
+	if err != nil {
+		return nil, err
+	}
+
+	err = cronSched.AddDailyJobAt(ctx, 1, 0, "slot horizon full repair", fillSlotHorizon.FullRepair)
+	if err != nil {
+		return nil, err
+	}
 
 	handler := httpapi.NewHandler(
 		createRoom,
@@ -83,24 +104,48 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 	}
 
 	return &App{
-		httpSrv: httpSrv,
-		logger:  logger,
+		httpSrv:         httpSrv,
+		fillSlotHorizon: fillSlotHorizon,
+		cronSched:       cronSched,
+		logger:          logger,
 	}, nil
 }
 
 func (app *App) Run(ctx context.Context) error {
-	app.logger.Info("http server starting", "addr", app.httpSrv.Addr)
+	g, ctx := errgroup.WithContext(ctx)
 
-	err := app.httpSrv.ListenAndServe()
-	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return err
-	}
+	g.Go(func() error {
+		app.logger.Info("initial slot horizon repair started")
+		if err := app.fillSlotHorizon.FullRepair(ctx); err != nil {
+			return err
+		}
 
-	return nil
+		app.logger.Info("initial slot horizon repair finished")
+		app.cronSched.Start()
+		<-ctx.Done()
+		return nil
+	})
+
+	g.Go(func() error {
+		app.logger.Info("http server starting", "addr", app.httpSrv.Addr)
+
+		err := app.httpSrv.ListenAndServe()
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
+
+		return nil
+	})
+
+	return g.Wait()
 }
 
 func (app *App) Shutdown(shutdownCtx context.Context) error {
 	app.logger.Info("Gracefully shutting down...")
+
+	if err := app.cronSched.Shutdown(); err != nil {
+		return err
+	}
 
 	if err := app.httpSrv.Shutdown(shutdownCtx); err != nil {
 		return err

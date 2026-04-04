@@ -12,6 +12,9 @@ type Generator struct {
 
 func (g *Generator) Generate(sched schedule.Schedule, from, to time.Time) []Slot {
 	slots := make([]Slot, 0)
+	if from.After(to) || from.Equal(to) {
+		return slots
+	}
 
 	dates := getDates(sched, from, to)
 

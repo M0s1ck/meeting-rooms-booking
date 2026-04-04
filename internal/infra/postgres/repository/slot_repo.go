@@ -3,13 +3,14 @@ package repository
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
-	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/slot"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/slot"
 )
 
 type SlotRepo struct {
@@ -25,7 +26,6 @@ func NewSlotRepo(db *pgxpool.Pool, txGetter *trmpgx.CtxGetter) *SlotRepo {
 }
 
 func (r *SlotRepo) Add(ctx context.Context, slots []slot.Slot) error {
-	slots = deduplicateSlots(slots)
 	if len(slots) == 0 {
 		return nil
 	}
@@ -83,38 +83,41 @@ func (r *SlotRepo) Add(ctx context.Context, slots []slot.Slot) error {
 	return nil
 }
 
-func deduplicateSlots(slots []slot.Slot) []slot.Slot {
-	if len(slots) < 2 {
-		return slots
+func (r *SlotRepo) GetLastEndAtByRooms(
+	ctx context.Context,
+	roomIDS []uuid.UUID,
+) (map[uuid.UUID]time.Time, error) {
+
+	querier := r.getter.DefaultTrOrDB(ctx, r.db)
+
+	query := `SELECT room_id, MAX(end_at)
+		FROM slots
+		WHERE room_id = ANY($1)
+		GROUP BY room_id`
+
+	rows, err := querier.Query(ctx, query, roomIDS)
+	if err != nil {
+		return nil, fmt.Errorf("get last end at by rooms: %w", err)
 	}
 
-	unique := make(map[string]slot.Slot, len(slots))
-	for _, item := range slots {
-		startAt := item.StartAt.UTC()
-		key := item.RoomID.String() + "|" + startAt.Format(time.RFC3339)
+	defer rows.Close()
 
-		if _, exists := unique[key]; exists {
-			continue
+	roomEnd := make(map[uuid.UUID]time.Time, len(roomIDS))
+
+	for rows.Next() {
+		var roomID uuid.UUID
+		var end time.Time
+
+		if err := rows.Scan(&roomID, &end); err != nil {
+			return nil, fmt.Errorf("get last end at by rooms scan: %w", err)
 		}
 
-		item.StartAt = startAt
-		item.EndAt = item.EndAt.UTC()
-		item.CreatedAt = item.CreatedAt.UTC()
-		unique[key] = item
+		roomEnd[roomID] = end
 	}
 
-	result := make([]slot.Slot, 0, len(unique))
-	for _, item := range unique {
-		result = append(result, item)
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("get last end at by rooms rows: %w", err)
 	}
 
-	sort.Slice(result, func(i, j int) bool {
-		if result[i].RoomID == result[j].RoomID {
-			return result[i].StartAt.Before(result[j].StartAt)
-		}
-
-		return result[i].RoomID.String() < result[j].RoomID.String()
-	})
-
-	return result
+	return roomEnd, nil
 }

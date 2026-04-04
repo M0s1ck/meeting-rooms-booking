@@ -36,6 +36,8 @@ func NewUsecase(
 }
 
 func (u *Usecase) Execute(ctx context.Context, req *Request, identity *authjwt.Identity) (*Response, error) {
+	now := time.Now().UTC()
+
 	if err := u.authorize(identity); err != nil {
 		return nil, err
 	}
@@ -45,7 +47,7 @@ func (u *Usecase) Execute(ctx context.Context, req *Request, identity *authjwt.I
 		req.DaysOfWeek,
 		req.StartTime,
 		req.EndTime,
-		time.Now(),
+		now,
 	)
 	if err != nil {
 		return nil, err
@@ -56,7 +58,7 @@ func (u *Usecase) Execute(ctx context.Context, req *Request, identity *authjwt.I
 			return err
 		}
 
-		slots := u.slotGen.Generate(*sched, time.Now(), time.Now().Add(slotGenHorizon))
+		slots := u.slotGen.Generate(*sched, now, now.Add(slotGenHorizon))
 		return u.slotRepo.Add(ctx, slots)
 	})
 
