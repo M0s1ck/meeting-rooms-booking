@@ -21,6 +21,7 @@ import (
 	"github.com/internships-backend/test-backend-M0s1ck/internal/infra/postgres/repository"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/service/authjwt"
 	httpapi "github.com/internships-backend/test-backend-M0s1ck/internal/transport/http"
+	httphelpers "github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/helpers"
 	appmiddleware "github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/middleware"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/oapi"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/auth/dummylogin"
@@ -127,6 +128,8 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 		oapi.NewStrictHandler(handler, strictMiddlewares),
 		router,
 	)
+
+	httphelpers.AddInfo(router)
 
 	httpSrv := &http.Server{
 		Addr:         cfg.HttpCfg.Addr,
