@@ -41,6 +41,9 @@ services:
       - POSTGRES_MAX_POOL_CONNS=10
       - POSTGRES_MIN_POOL_CONNS=2
       - SLOT_HORIZON=336h
+      - SLOT_HORIZON_REPAIR_TZ=Europe/Moscow
+      - SLOT_HORIZON_REPAIR_TIME=01:00
+      - SLOT_HORIZON_FILLTAIL_INTERVAL=1h
       - BCRYPT_COST=10
     ports:
       - "8080:8080"   # http

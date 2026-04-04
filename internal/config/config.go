@@ -55,3 +55,26 @@ func getEnvDuration(key string, defaultVal time.Duration) time.Duration {
 
 	return d
 }
+
+func getEnvTimeZone(key string, defaultVal time.Location) time.Location {
+	val := os.Getenv(key)
+	if val == "" {
+		return defaultVal
+	}
+
+	loc, err := time.LoadLocation(val)
+	if err != nil || loc == nil {
+		return defaultVal
+	}
+
+	return *loc
+}
+
+func getEnvClock(key string) (hour, minute uint, err error) {
+	val := os.Getenv(key)
+	t, err := time.Parse("15:04", val)
+	if err != nil {
+		return 0, 0, err
+	}
+	return uint(t.Hour()), uint(t.Minute()), nil
+}

@@ -13,9 +13,9 @@ type Scheduler struct {
 	logger *slog.Logger
 }
 
-func New(logger *slog.Logger) (*Scheduler, error) {
+func New(logger *slog.Logger, loc time.Location) (*Scheduler, error) {
 	s, err := gocron.NewScheduler(
-		gocron.WithLocation(time.Local),
+		gocron.WithLocation(&loc),
 	)
 	if err != nil {
 		return nil, err

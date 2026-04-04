@@ -85,17 +85,25 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 	reg := register.NewUsecase(userRepo, passHasher)
 	logIn := login.NewUsecase(userRepo, tokenManager, passHasher)
 
-	cronSched, err := cron.New(logger)
+	cronSched, err := cron.New(logger, cfg.SlotCfg.HorizonRepairTZ)
 	if err != nil {
 		return nil, err
 	}
 
-	err = cronSched.AddJob(ctx, time.Hour, "fill slot horizon tail", fillSlotHorizon.FillTail)
+	err = cronSched.AddJob(ctx,
+		cfg.SlotCfg.HorizonFillTailInterval,
+		"fill slot horizon tail",
+		fillSlotHorizon.FillTail,
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	err = cronSched.AddDailyJobAt(ctx, 1, 0, "slot horizon full repair", fillSlotHorizon.FullRepair)
+	err = cronSched.AddDailyJobAt(ctx,
+		cfg.SlotCfg.HorizonRepairHour, cfg.SlotCfg.HorizonRepairMinute,
+		"slot horizon full repair",
+		fillSlotHorizon.FullRepair,
+	)
 	if err != nil {
 		return nil, err
 	}
