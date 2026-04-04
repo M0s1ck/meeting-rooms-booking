@@ -2,12 +2,14 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/slot"
@@ -81,6 +83,29 @@ func (r *SlotRepo) Add(ctx context.Context, slots []slot.Slot) error {
 	}
 
 	return nil
+}
+
+func (r *SlotRepo) GetByID(ctx context.Context, slotID uuid.UUID) (*slot.Slot, error) {
+	querier := r.getter.DefaultTrOrDB(ctx, r.db)
+
+	const query = `
+		SELECT id, room_id, start_at, end_at, created_at
+		FROM slots
+		WHERE id = $1
+	`
+
+	row := querier.QueryRow(ctx, query, slotID)
+	slt, err := scanSlot(row)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, slot.ErrNotFound
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("get slot by id: %w", err)
+	}
+
+	return slt, nil
 }
 
 func (r *SlotRepo) ListAvailableByRoomAndDate(
@@ -186,5 +211,4 @@ func scanSlot(scanner slotScanner) (*slot.Slot, error) {
 	}
 
 	return &item, nil
-
 }

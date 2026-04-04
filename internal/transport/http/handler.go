@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 
+	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/booking"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/room"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/schedule"
+	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/slot"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/user"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/service/authjwt"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/helpers"
@@ -13,6 +15,7 @@ import (
 	"github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/middleware"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/oapi"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/auth/dummylogin"
+	createbooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/create"
 	createroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/create"
 	listroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/list"
 	createschedule "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/schedule/create"
@@ -35,6 +38,10 @@ type listSlotUsecase interface {
 	Execute(ctx context.Context, req *listslot.Request) (*listslot.Response, error)
 }
 
+type createBookingUsecase interface {
+	Execute(ctx context.Context, req *createbooking.Request, identity *authjwt.Identity) (*createbooking.Response, error)
+}
+
 type dummyLoginUsecase interface {
 	Execute(ctx context.Context, req *dummylogin.Request) (*dummylogin.Response, error)
 }
@@ -44,6 +51,7 @@ type StrictHandler struct {
 	listRoom       listRoomUsecase
 	createSchedule createScheduleUsecase
 	listSlot       listSlotUsecase
+	createBooking  createBookingUsecase
 	dummyLogin     dummyLoginUsecase
 }
 
@@ -52,6 +60,7 @@ func NewHandler(
 	listRoom listRoomUsecase,
 	createSchedule createScheduleUsecase,
 	listSlot listSlotUsecase,
+	createBooking createBookingUsecase,
 	dummyLogin dummyLoginUsecase,
 ) *StrictHandler {
 
@@ -60,6 +69,7 @@ func NewHandler(
 		listRoom:       listRoom,
 		createSchedule: createSchedule,
 		listSlot:       listSlot,
+		createBooking:  createBooking,
 		dummyLogin:     dummyLogin,
 	}
 }
@@ -179,8 +189,48 @@ func (s *StrictHandler) GetRoomsRoomIdSlotsList(ctx context.Context, request oap
 }
 
 func (s *StrictHandler) PostBookingsCreate(ctx context.Context, request oapi.PostBookingsCreateRequestObject) (oapi.PostBookingsCreateResponseObject, error) {
-	//TODO implement me
-	panic("implement me")
+	ucReq, err := mapper.ToCreateBookingRequest(request.Body)
+	if err != nil {
+		return oapi.PostBookingsCreate400JSONResponse(
+			helpers.NewErrorResponse(oapi.INVALIDREQUEST, err.Error()),
+		), nil
+	}
+
+	identity := middleware.MustIdentityFromContext(ctx)
+
+	ucResp, err := s.createBooking.Execute(ctx, ucReq, identity)
+	if err != nil {
+		switch {
+		case errors.Is(err, user.ErrUserRoleRequired):
+			return oapi.PostBookingsCreate403JSONResponse(
+				helpers.NewErrorResponse(oapi.FORBIDDEN, err.Error()),
+			), nil
+
+		case errors.Is(err, booking.ErrSlotIDRequired),
+			errors.Is(err, booking.ErrUserIDRequired),
+			errors.Is(err, booking.ErrSlotInPast):
+			return oapi.PostBookingsCreate400JSONResponse(
+				helpers.NewErrorResponse(oapi.INVALIDREQUEST, err.Error()),
+			), nil
+
+		case errors.Is(err, slot.ErrNotFound):
+			return oapi.PostBookingsCreate404JSONResponse(
+				helpers.NewErrorResponse(oapi.SLOTNOTFOUND, err.Error()),
+			), nil
+
+		case errors.Is(err, booking.ErrAlreadyBooked):
+			return oapi.PostBookingsCreate409JSONResponse(
+				helpers.NewErrorResponse(oapi.SLOTALREADYBOOKED, err.Error()),
+			), nil
+
+		default:
+			return oapi.PostBookingsCreate500JSONResponse(
+				helpers.NewInternalErrorResponse("create booking internal server error"),
+			), nil
+		}
+	}
+
+	return mapper.ToCreateBookingResponse(ucResp), nil
 }
 
 func (s *StrictHandler) GetBookingsList(ctx context.Context, request oapi.GetBookingsListRequestObject) (oapi.GetBookingsListResponseObject, error) {
