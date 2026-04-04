@@ -25,6 +25,7 @@ import (
 	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/auth/dummylogin"
 	createbooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/create"
 	listbooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/list"
+	mybooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/my"
 	createroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/create"
 	listroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/list"
 	createschedule "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/schedule/create"
@@ -73,6 +74,7 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 	listSlots := listslot.NewUsecase(roomRepo, slotRepo, ensureRoomDate, slotHorizon)
 	createBooking := createbooking.NewUsecase(bookingRepo, slotRepo, userRepo, txManager)
 	listBooking := listbooking.NewUsecase(bookingRepo)
+	myBooking := mybooking.NewUsecase(bookingRepo)
 
 	cronSched, err := cron.New(logger)
 	if err != nil {
@@ -96,6 +98,7 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 		ListSlot:       listSlots,
 		CreateBooking:  createBooking,
 		ListBooking:    listBooking,
+		MyBooking:      myBooking,
 		DummyLogin:     dummyLogin,
 	})
 

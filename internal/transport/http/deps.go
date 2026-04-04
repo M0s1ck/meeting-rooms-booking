@@ -7,6 +7,7 @@ import (
 	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/auth/dummylogin"
 	createbooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/create"
 	listbooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/list"
+	mybooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/my"
 	createroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/create"
 	listroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/list"
 	createschedule "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/schedule/create"
@@ -37,6 +38,10 @@ type listBookingUsecase interface {
 	Execute(ctx context.Context, req *listbooking.Request, identity *authjwt.Identity) (*listbooking.Response, error)
 }
 
+type myBookingUsecase interface {
+	Execute(ctx context.Context, identity *authjwt.Identity) (*mybooking.Response, error)
+}
+
 type dummyLoginUsecase interface {
 	Execute(ctx context.Context, req *dummylogin.Request) (*dummylogin.Response, error)
 }
@@ -48,5 +53,6 @@ type HandlerDeps struct {
 	ListSlot       listSlotUsecase
 	CreateBooking  createBookingUsecase
 	ListBooking    listBookingUsecase
+	MyBooking      myBookingUsecase
 	DummyLogin     dummyLoginUsecase
 }

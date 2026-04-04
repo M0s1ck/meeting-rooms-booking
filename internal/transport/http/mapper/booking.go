@@ -6,6 +6,7 @@ import (
 	"github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/oapi"
 	createbooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/create"
 	listbooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/list"
+	mybooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/my"
 )
 
 var ErrNilCreateBookingBody = errors.New("request body is required")
@@ -77,5 +78,28 @@ func ToListBookingsResponse(resp *listbooking.Response) oapi.GetBookingsList200J
 			PageSize: resp.Pagination.PageSize,
 			Total:    resp.Pagination.Total,
 		},
+	}
+}
+
+func ToMyBookingsResponse(resp *mybooking.Response) oapi.GetBookingsMy200JSONResponse {
+	if resp == nil {
+		return oapi.GetBookingsMy200JSONResponse{}
+	}
+
+	bookings := make([]oapi.Booking, 0, len(resp.Bookings))
+	for _, item := range resp.Bookings {
+		createdAt := item.CreatedAt.UTC()
+		bookings = append(bookings, oapi.Booking{
+			Id:             item.ID,
+			SlotId:         item.SlotID,
+			UserId:         item.UserID,
+			Status:         oapi.BookingStatus(item.Status),
+			ConferenceLink: item.ConferenceLink,
+			CreatedAt:      &createdAt,
+		})
+	}
+
+	return oapi.GetBookingsMy200JSONResponse{
+		Bookings: &bookings,
 	}
 }

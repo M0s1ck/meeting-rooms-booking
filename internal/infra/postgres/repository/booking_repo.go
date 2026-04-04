@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -77,21 +79,39 @@ func (r *BookingRepo) List(ctx context.Context, page, pageSize int) ([]booking.B
 	}
 	defer rows.Close()
 
-	bookings := make([]booking.Booking, 0, pageSize)
-	for rows.Next() {
-		item, scanErr := scanBooking(rows)
-		if scanErr != nil {
-			return nil, 0, fmt.Errorf("list bookings: %w", scanErr)
-		}
-
-		bookings = append(bookings, *item)
-	}
-
-	if err := rows.Err(); err != nil {
+	bookings, err := collectBookings(rows)
+	if err != nil {
 		return nil, 0, fmt.Errorf("list bookings: %w", err)
 	}
 
 	return bookings, total, nil
+}
+
+func (r *BookingRepo) ListFutureByUser(ctx context.Context, userID uuid.UUID, now time.Time) ([]booking.Booking, error) {
+	querier := r.getter.DefaultTrOrDB(ctx, r.db)
+
+	const query = `
+		SELECT b.id, b.slot_id, b.user_id, b.status, b.conference_link, b.created_at
+		FROM bookings b
+		JOIN slots s ON s.id = b.slot_id
+		WHERE b.user_id = $1
+		  AND s.start_at >= $2
+		  AND b.status = 'active'	
+		ORDER BY s.start_at, b.id
+	`
+
+	rows, err := querier.Query(ctx, query, userID, now.UTC())
+	if err != nil {
+		return nil, fmt.Errorf("list future bookings by user: %w", err)
+	}
+	defer rows.Close()
+
+	items, err := collectBookings(rows)
+	if err != nil {
+		return nil, fmt.Errorf("list future bookings by user: %w", err)
+	}
+
+	return items, nil
 }
 
 type bookingScanner interface {
@@ -115,4 +135,29 @@ func scanBooking(scanner bookingScanner) (*booking.Booking, error) {
 
 	b.Status = booking.Status(statusRaw)
 	return &b, nil
+}
+
+type pgRows interface {
+	Next() bool
+	Err() error
+	Scan(dest ...any) error
+}
+
+func collectBookings(rows pgRows) ([]booking.Booking, error) {
+	bookings := make([]booking.Booking, 0)
+
+	for rows.Next() {
+		item, scanErr := scanBooking(rows)
+		if scanErr != nil {
+			return nil, scanErr
+		}
+
+		bookings = append(bookings, *item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return bookings, nil
 }

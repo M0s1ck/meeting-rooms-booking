@@ -1,6 +1,10 @@
 package list
 
-import "context"
+import (
+	"context"
+
+	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/room"
+)
 
 type Usecase struct {
 	repo roomRepo
@@ -16,6 +20,11 @@ func (u *Usecase) Execute(ctx context.Context) (*Response, error) {
 		return nil, err
 	}
 
+	resp := buildResp(rooms)
+	return resp, nil
+}
+
+func buildResp(rooms []*room.Room) *Response {
 	resp := &Response{
 		Rooms: make([]Room, 0, len(rooms)),
 	}
@@ -34,5 +43,5 @@ func (u *Usecase) Execute(ctx context.Context) (*Response, error) {
 		})
 	}
 
-	return resp, nil
+	return resp
 }

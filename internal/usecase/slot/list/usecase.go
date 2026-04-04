@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/room"
+	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/slot"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/slot/ensureroomdate"
 )
 
@@ -58,6 +59,18 @@ func (u *Usecase) Execute(ctx context.Context, req *Request) (*Response, error) 
 		return nil, err
 	}
 
+	resp := buildResp(slots)
+	return resp, nil
+}
+
+func isAfterSlotHorizon(date, now time.Time, slotHorizon time.Duration) bool {
+	dayStart := time.Date(date.UTC().Year(), date.UTC().Month(), date.UTC().Day(), 0, 0, 0, 0, time.UTC)
+	dayEnd := dayStart.AddDate(0, 0, 1)
+
+	return dayEnd.After(now.Add(slotHorizon))
+}
+
+func buildResp(slots []slot.Slot) *Response {
 	resp := &Response{
 		Slots: make([]Slot, 0, len(slots)),
 	}
@@ -71,12 +84,5 @@ func (u *Usecase) Execute(ctx context.Context, req *Request) (*Response, error) 
 		})
 	}
 
-	return resp, nil
-}
-
-func isAfterSlotHorizon(date, now time.Time, slotHorizon time.Duration) bool {
-	dayStart := time.Date(date.UTC().Year(), date.UTC().Month(), date.UTC().Day(), 0, 0, 0, 0, time.UTC)
-	dayEnd := dayStart.AddDate(0, 0, 1)
-
-	return dayEnd.After(now.Add(slotHorizon))
+	return resp
 }
