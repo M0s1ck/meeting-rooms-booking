@@ -24,6 +24,7 @@ import (
 	appmiddleware "github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/middleware"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/oapi"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/auth/dummylogin"
+	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/auth/login"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/auth/register"
 	cancelbooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/cancel"
 	createbooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/create"
@@ -75,12 +76,13 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 	fillSlotHorizon := fillhorizon.NewUsecase(slotGen, slotRepo, shedRepo, txManager, slotHorizon)
 	ensureRoomDate := ensureroomdate.NewUsecase(slotGen, shedRepo, slotRepo, txManager)
 	listSlots := listslot.NewUsecase(roomRepo, slotRepo, ensureRoomDate, slotHorizon)
-	createBooking := createbooking.NewUsecase(bookingRepo, slotRepo, userRepo, txManager)
+	createBooking := createbooking.NewUsecase(bookingRepo, slotRepo)
 	listBooking := listbooking.NewUsecase(bookingRepo)
 	myBooking := mybooking.NewUsecase(bookingRepo)
 	cancelBooking := cancelbooking.NewUsecase(bookingRepo)
-	dummyLogin := dummylogin.NewUsecase(tokenManager)
+	dummyLogin := dummylogin.NewUsecase(tokenManager, userRepo)
 	reg := register.NewUsecase(userRepo, passHasher)
+	logIn := login.NewUsecase(userRepo, tokenManager, passHasher)
 
 	cronSched, err := cron.New(logger)
 	if err != nil {
@@ -108,6 +110,7 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 		CancelBooking:  cancelBooking,
 		DummyLogin:     dummyLogin,
 		Register:       reg,
+		Login:          logIn,
 	})
 
 	router := chi.NewRouter()

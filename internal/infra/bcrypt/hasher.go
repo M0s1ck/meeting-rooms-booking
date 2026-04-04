@@ -37,5 +37,9 @@ func (b *Hasher) Compare(hash, password string) error {
 		return user.ErrWrongPassword
 	}
 
-	return fmt.Errorf("pass hash compare err: %w", err)
+	if err != nil {
+		return fmt.Errorf("pass hash compare err: %w", err)
+	}
+
+	return nil
 }

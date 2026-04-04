@@ -7,6 +7,7 @@ import (
 
 	"github.com/internships-backend/test-backend-M0s1ck/internal/service/authjwt"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/auth/dummylogin"
+	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/auth/login"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/auth/register"
 	cancelbooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/cancel"
 	createbooking "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/create"
@@ -58,6 +59,10 @@ type registerUsecase interface {
 	Execute(ctx context.Context, req *register.Request) (*register.Response, error)
 }
 
+type loginUsecase interface {
+	Execute(ctx context.Context, req *login.Request) (*login.Response, error)
+}
+
 type HandlerDeps struct {
 	CreateRoom     createRoomUsecase
 	ListRoom       listRoomUsecase
@@ -69,4 +74,5 @@ type HandlerDeps struct {
 	CancelBooking  cancelBookingUsecase
 	DummyLogin     dummyLoginUsecase
 	Register       registerUsecase
+	Login          loginUsecase
 }

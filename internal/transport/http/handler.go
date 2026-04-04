@@ -26,6 +26,7 @@ type StrictHandler struct {
 	cancelBooking  cancelBookingUsecase
 	dummyLogin     dummyLoginUsecase
 	register       registerUsecase
+	login          loginUsecase
 }
 
 func NewHandler(deps HandlerDeps) *StrictHandler {
@@ -40,6 +41,7 @@ func NewHandler(deps HandlerDeps) *StrictHandler {
 		cancelBooking:  deps.CancelBooking,
 		dummyLogin:     deps.DummyLogin,
 		register:       deps.Register,
+		login:          deps.Login,
 	}
 }
 
@@ -287,7 +289,28 @@ func (s *StrictHandler) PostDummyLogin(ctx context.Context, request oapi.PostDum
 }
 
 func (s *StrictHandler) PostLogin(ctx context.Context, request oapi.PostLoginRequestObject) (oapi.PostLoginResponseObject, error) {
-	panic("implement me")
+	ucReq, err := mapper.ToLoginRequest(request.Body)
+	if err != nil {
+		return oapi.PostLogin401JSONResponse(
+			helpers.NewErrorResponse(oapi.UNAUTHORIZED, err.Error()),
+		), nil
+	}
+
+	ucResp, err := s.login.Execute(ctx, ucReq)
+	if err != nil {
+		switch {
+		case errors.Is(err, user.ErrInvalidCredentials):
+			return oapi.PostLogin401JSONResponse(
+				helpers.NewErrorResponse(oapi.UNAUTHORIZED, err.Error()),
+			), nil
+		default:
+			return oapi.PostLogin500JSONResponse(
+				helpers.NewInternalErrorResponse("register internal server error"),
+			), nil
+		}
+	}
+
+	return mapper.ToLoginResponse(ucResp), nil
 }
 
 func (s *StrictHandler) PostRegister(ctx context.Context, request oapi.PostRegisterRequestObject) (oapi.PostRegisterResponseObject, error) {
@@ -299,7 +322,6 @@ func (s *StrictHandler) PostRegister(ctx context.Context, request oapi.PostRegis
 	}
 
 	ucResp, err := s.register.Execute(ctx, ucReq)
-
 	if err != nil {
 		switch {
 		case errors.Is(err, user.ErrInvalidEmail),

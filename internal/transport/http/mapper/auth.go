@@ -8,12 +8,14 @@ import (
 	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/user"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/oapi"
 	dummylogin "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/auth/dummylogin"
+	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/auth/login"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/auth/register"
 )
 
 var (
 	ErrNilDummyLoginBody = errors.New("request body is required")
 	ErrNilRegisterBody   = errors.New("request body is required")
+	ErrNilLoginBody      = errors.New("request body is required")
 )
 
 func ToDummyLoginRequest(body *oapi.PostDummyLoginJSONRequestBody) (*dummylogin.Request, error) {
@@ -61,5 +63,22 @@ func ToRegisterResponse(resp *register.Response) oapi.PostRegister201JSONRespons
 			Role:      oapi.UserRole(resp.Role),
 			CreatedAt: &resp.CreatedAt,
 		},
+	}
+}
+
+func ToLoginRequest(body *oapi.PostLoginJSONRequestBody) (*login.Request, error) {
+	if body == nil {
+		return nil, ErrNilLoginBody
+	}
+
+	return &login.Request{
+		Email:    string(body.Email),
+		Password: body.Password,
+	}, nil
+}
+
+func ToLoginResponse(resp *login.Response) oapi.PostLogin200JSONResponse {
+	return oapi.PostLogin200JSONResponse{
+		Token: resp.Token,
 	}
 }

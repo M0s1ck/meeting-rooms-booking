@@ -8,6 +8,7 @@ import (
 
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv5/v2"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -55,6 +56,29 @@ func (r *UserRepo) Create(ctx context.Context, usr *user.User) error {
 	return nil
 }
 
+func (r *UserRepo) GetByEmail(ctx context.Context, email user.Email) (*user.User, error) {
+	querier := r.getter.DefaultTrOrDB(ctx, r.db)
+
+	const query = `
+		SELECT id, email, password_hash, role, created_at
+		FROM users
+		WHERE email = $1
+	`
+
+	row := querier.QueryRow(ctx, query, email)
+	usr, err := scanUser(row)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, user.ErrNotFound
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("get user by email: %w", err)
+	}
+
+	return usr, nil
+}
+
 func (r *UserRepo) Ensure(ctx context.Context, userID uuid.UUID, role user.Role) error {
 	querier := r.getter.DefaultTrOrDB(ctx, r.db)
 
@@ -72,4 +96,23 @@ func (r *UserRepo) Ensure(ctx context.Context, userID uuid.UUID, role user.Role)
 	}
 
 	return nil
+}
+
+type userScanner interface {
+	Scan(dest ...interface{}) error
+}
+
+func scanUser(scanner userScanner) (*user.User, error) {
+	var usr user.User
+
+	if err := scanner.Scan(
+		&usr.ID,
+		&usr.Email,
+		&usr.PassHash,
+		&usr.Role,
+		&usr.CreatedAt); err != nil {
+		return nil, fmt.Errorf("scan user: %w", err)
+	}
+
+	return &usr, nil
 }
