@@ -55,3 +55,35 @@ func Test_New_Fail(t *testing.T) {
 		})
 	}
 }
+
+func Test_SetConfLink(t *testing.T) {
+	tests := []struct {
+		name string
+		link string
+		err  error
+	}{
+		{
+			name: "blank_link",
+			link: "  ",
+			err:  booking.ErrConfLinkBlank,
+		},
+		{
+			name: "valid",
+			link: "https://mock-conference.local/1737f916-c6c6-514e-b6e7-eee9cec14d0a/b566a8f5-4fbc-42c7-ba6b-3a85dcb6ed6c/380cae68-65a4-4d85-9831-46f949fc92ad",
+			err:  nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			slotId, userID := uuid.New(), uuid.New()
+			now := time.Now().UTC()
+
+			book, err := booking.NewActive(slotId, userID, now)
+			require.Nil(t, err)
+
+			err = book.SetConferenceLink(tt.link)
+			require.Equal(t, tt.err, err)
+		})
+	}
+}

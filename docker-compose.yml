@@ -48,7 +48,7 @@ services:
       - SLOT_HORIZON_FILLTAIL_INTERVAL=1h
       - BCRYPT_COST=10
     ports:
-      - "8080:8080"   # http
+      - "8080:8080"
     depends_on:
       scheduler-postgres:
         condition: service_healthy
