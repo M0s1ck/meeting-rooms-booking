@@ -43,7 +43,11 @@ func (u *Usecase) Execute(ctx context.Context, req *Request) (*Response, error) 
 
 	now := time.Now().UTC()
 
-	if u.ensureDateFilled != nil && isAfterSlotHorizon(req.Date, now, u.slotHorizon) {
+	if isPastDate(req.Date, now) {
+		return &Response{Slots: []Slot{}}, nil
+	}
+
+	if isAfterSlotHorizon(req.Date, now, u.slotHorizon) {
 		fillReq := &ensureroomdate.Request{
 			RoomID: req.RoomID,
 			Date:   req.Date,
@@ -54,7 +58,7 @@ func (u *Usecase) Execute(ctx context.Context, req *Request) (*Response, error) 
 		}
 	}
 
-	slots, err := u.slotRepo.ListAvailableByRoomAndDate(ctx, req.RoomID, req.Date)
+	slots, err := u.slotRepo.ListAvailableByRoomAndDate(ctx, req.RoomID, req.Date, now)
 	if err != nil {
 		return nil, err
 	}
@@ -68,6 +72,16 @@ func isAfterSlotHorizon(date, now time.Time, slotHorizon time.Duration) bool {
 	dayEnd := dayStart.AddDate(0, 0, 1)
 
 	return dayEnd.After(now.Add(slotHorizon))
+}
+
+func isPastDate(date, now time.Time) bool {
+	d := date.UTC()
+	n := now.UTC()
+
+	dateStart := time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, time.UTC)
+	nowStart := time.Date(n.Year(), n.Month(), n.Day(), 0, 0, 0, 0, time.UTC)
+
+	return dateStart.Before(nowStart)
 }
 
 func buildResp(slots []slot.Slot) *Response {

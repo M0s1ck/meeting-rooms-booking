@@ -6,15 +6,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/booking"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/user"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/service/authjwt"
 )
 
 type Usecase struct {
-	bookingRepo bookingRepo
-	slotRepo    slotRepo
-
+	bookingRepo      bookingRepo
+	slotRepo         slotRepo
 	confLinkProvider conferenceLinkProvider
 	logger           *slog.Logger
 }

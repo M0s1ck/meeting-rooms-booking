@@ -76,16 +76,16 @@ func (m *MockslotRepo) EXPECT() *MockslotRepoMockRecorder {
 }
 
 // ListAvailableByRoomAndDate mocks base method.
-func (m *MockslotRepo) ListAvailableByRoomAndDate(ctx context.Context, roomID uuid.UUID, date time.Time) ([]slot.Slot, error) {
+func (m *MockslotRepo) ListAvailableByRoomAndDate(ctx context.Context, roomID uuid.UUID, date, now time.Time) ([]slot.Slot, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListAvailableByRoomAndDate", ctx, roomID, date)
+	ret := m.ctrl.Call(m, "ListAvailableByRoomAndDate", ctx, roomID, date, now)
 	ret0, _ := ret[0].([]slot.Slot)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListAvailableByRoomAndDate indicates an expected call of ListAvailableByRoomAndDate.
-func (mr *MockslotRepoMockRecorder) ListAvailableByRoomAndDate(ctx, roomID, date interface{}) *gomock.Call {
+func (mr *MockslotRepoMockRecorder) ListAvailableByRoomAndDate(ctx, roomID, date, now interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAvailableByRoomAndDate", reflect.TypeOf((*MockslotRepo)(nil).ListAvailableByRoomAndDate), ctx, roomID, date)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAvailableByRoomAndDate", reflect.TypeOf((*MockslotRepo)(nil).ListAvailableByRoomAndDate), ctx, roomID, date, now)
 }

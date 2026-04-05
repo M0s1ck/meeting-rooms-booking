@@ -11,7 +11,6 @@ import (
 	"github.com/avito-tech/go-transaction-manager/trm/v2/manager"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/internships-backend/test-backend-M0s1ck/internal/infra/thirdparty/conferenceservice"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/internships-backend/test-backend-M0s1ck/internal/config"
@@ -20,6 +19,7 @@ import (
 	"github.com/internships-backend/test-backend-M0s1ck/internal/infra/cron"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/infra/postgres"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/infra/postgres/repository"
+	"github.com/internships-backend/test-backend-M0s1ck/internal/infra/thirdparty/conferenceservice"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/service/authjwt"
 	httpapi "github.com/internships-backend/test-backend-M0s1ck/internal/transport/http"
 	httphelpers "github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/helpers"

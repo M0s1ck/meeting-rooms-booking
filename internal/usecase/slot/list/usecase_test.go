@@ -28,18 +28,18 @@ func TestUsecase_Execute_DateInHorizon_Success(t *testing.T) {
 	uc := list.NewUsecase(roomRepo, slotRepo, ensureDateFilled, slotHorizon)
 
 	now := time.Now().UTC()
-	tomorrowDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC).
-		AddDate(0, 0, 1)
+	date := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC).
+		AddDate(0, 0, 5)
 
 	req := &list.Request{
 		RoomID: uuid.New(),
-		Date:   tomorrowDate,
+		Date:   date,
 	}
 
-	slt1, err := slot.New(req.RoomID, tomorrowDate.Add(10*time.Hour), now)
+	slt1, err := slot.New(req.RoomID, date.Add(10*time.Hour), now)
 	require.NoError(t, err)
 
-	slt2, err := slot.New(req.RoomID, tomorrowDate.Add(11*time.Hour), now)
+	slt2, err := slot.New(req.RoomID, date.Add(11*time.Hour), now)
 	require.NoError(t, err)
 
 	roomRepo.EXPECT().
@@ -47,7 +47,7 @@ func TestUsecase_Execute_DateInHorizon_Success(t *testing.T) {
 		Return(true, nil)
 
 	slotRepo.EXPECT().
-		ListAvailableByRoomAndDate(gomock.Any(), req.RoomID, req.Date).
+		ListAvailableByRoomAndDate(gomock.Any(), req.RoomID, req.Date, gomock.Any()).
 		Return([]slot.Slot{*slt1, *slt2}, nil)
 
 	resp, err := uc.Execute(t.Context(), req)
@@ -99,7 +99,7 @@ func TestUsecase_Execute_DateAfterHorizon_Success(t *testing.T) {
 	require.NoError(t, err)
 
 	slotRepo.EXPECT().
-		ListAvailableByRoomAndDate(gomock.Any(), req.RoomID, req.Date).
+		ListAvailableByRoomAndDate(gomock.Any(), req.RoomID, req.Date, gomock.Any()).
 		Return([]slot.Slot{*slt1, *slt2}, nil)
 
 	resp, err := uc.Execute(t.Context(), req)
@@ -111,6 +111,38 @@ func TestUsecase_Execute_DateAfterHorizon_Success(t *testing.T) {
 	require.Equal(t, resp.Slots[1].ID, slt2.ID)
 	require.Equal(t, resp.Slots[0].RoomID, req.RoomID)
 	require.Equal(t, resp.Slots[0].StartAt, slt1.StartAt)
+}
+
+func TestUsecase_Execute_DateInPast_ReturnsEmpty(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	roomRepo := mocks.NewMockroomRepo(ctrl)
+	slotRepo := mocks.NewMockslotRepo(ctrl)
+	ensureDateFilled := mocks.NewMockensureRoomOnDateFilledUsecase(ctrl)
+	uc := list.NewUsecase(roomRepo, slotRepo, ensureDateFilled, time.Hour*24*14)
+
+	now := time.Now().UTC()
+	pastDate := now.AddDate(0, 0, -1)
+
+	req := &list.Request{
+		RoomID: uuid.New(),
+		Date:   pastDate,
+	}
+
+	roomRepo.EXPECT().
+		Exists(gomock.Any(), req.RoomID).
+		Return(true, nil)
+
+	slotRepo.EXPECT().
+		ListAvailableByRoomAndDate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Times(0)
+
+	resp, err := uc.Execute(t.Context(), req)
+
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Len(t, resp.Slots, 0)
 }
 
 func TestUsecase_Execute_RoomNotFound(t *testing.T) {

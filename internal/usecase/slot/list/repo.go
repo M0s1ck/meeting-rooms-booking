@@ -15,5 +15,5 @@ type roomRepo interface {
 }
 
 type slotRepo interface {
-	ListAvailableByRoomAndDate(ctx context.Context, roomID uuid.UUID, date time.Time) ([]slot.Slot, error)
+	ListAvailableByRoomAndDate(ctx context.Context, roomID uuid.UUID, date time.Time, now time.Time) ([]slot.Slot, error)
 }

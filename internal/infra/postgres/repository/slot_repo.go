@@ -112,6 +112,7 @@ func (r *SlotRepo) ListAvailableByRoomAndDate(
 	ctx context.Context,
 	roomID uuid.UUID,
 	date time.Time,
+	now time.Time,
 ) ([]slot.Slot, error) {
 	querier := r.getter.DefaultTrOrDB(ctx, r.db)
 
@@ -123,7 +124,8 @@ func (r *SlotRepo) ListAvailableByRoomAndDate(
 			AND b.status = 'active'
 		WHERE s.room_id = $1
 			AND s.start_at >= $2
-			AND s.start_at < $3
+		    AND s.start_at >= $3
+			AND s.start_at < $4
 			AND b.id IS NULL
 		ORDER BY s.start_at, s.id
 	`
@@ -131,7 +133,7 @@ func (r *SlotRepo) ListAvailableByRoomAndDate(
 	lower := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
 	upper := lower.AddDate(0, 0, 1)
 
-	rows, err := querier.Query(ctx, query, roomID, lower, upper)
+	rows, err := querier.Query(ctx, query, roomID, lower, now.UTC(), upper)
 	if err != nil {
 		return nil, fmt.Errorf("list available slots by room and date: %w", err)
 	}
