@@ -124,16 +124,18 @@ func (r *SlotRepo) ListAvailableByRoomAndDate(
 			AND b.status = 'active'
 		WHERE s.room_id = $1
 			AND s.start_at >= $2
-		    AND s.start_at >= $3
-			AND s.start_at < $4
+			AND s.start_at < $3
 			AND b.id IS NULL
 		ORDER BY s.start_at, s.id
 	`
 
 	lower := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+	if lower.Before(now) {
+		lower = now
+	}
 	upper := lower.AddDate(0, 0, 1)
 
-	rows, err := querier.Query(ctx, query, roomID, lower, now.UTC(), upper)
+	rows, err := querier.Query(ctx, query, roomID, lower, upper)
 	if err != nil {
 		return nil, fmt.Errorf("list available slots by room and date: %w", err)
 	}
