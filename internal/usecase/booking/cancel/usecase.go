@@ -11,15 +11,6 @@ import (
 	"github.com/internships-backend/test-backend-M0s1ck/internal/service/authjwt"
 )
 
-type Response struct {
-	ID             uuid.UUID
-	SlotID         uuid.UUID
-	UserID         uuid.UUID
-	Status         booking.Status
-	ConferenceLink *string
-	CreatedAt      time.Time
-}
-
 type Usecase struct {
 	repo bookingRepo
 }

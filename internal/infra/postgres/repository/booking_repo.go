@@ -88,7 +88,7 @@ func (r *BookingRepo) List(ctx context.Context, page, pageSize int) ([]booking.B
 	return bookings, total, nil
 }
 
-func (r *BookingRepo) ListFutureByUser(ctx context.Context, userID uuid.UUID, now time.Time) ([]booking.Booking, error) {
+func (r *BookingRepo) ListFutureActiveByUser(ctx context.Context, userID uuid.UUID, now time.Time) ([]booking.Booking, error) {
 	querier := r.getter.DefaultTrOrDB(ctx, r.db)
 
 	const query = `

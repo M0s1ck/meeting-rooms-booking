@@ -22,7 +22,7 @@ func (u *Usecase) Execute(ctx context.Context, identity *authjwt.Identity) (*Res
 		return nil, err
 	}
 
-	bookings, err := u.repo.ListFutureByUser(ctx, identity.UserID, time.Now().UTC())
+	bookings, err := u.repo.ListFutureActiveByUser(ctx, identity.UserID, time.Now().UTC())
 	if err != nil {
 		return nil, err
 	}

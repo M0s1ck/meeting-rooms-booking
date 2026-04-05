@@ -10,7 +10,16 @@ import (
 	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/slot"
 )
 
-func TestNewUsesDeterministicID(t *testing.T) {
+func Test_New_Error(t *testing.T) {
+	roomID := uuid.New()
+	startAt := time.Date(2026, time.April, 4, 23, 50, 0, 0, time.UTC)
+
+	slt, err := slot.New(roomID, startAt, startAt.Add(-time.Hour*24))
+	require.Equal(t, err, slot.ErrSlotStartTooLate)
+	require.Nil(t, slt)
+}
+
+func Test_New_UsesDeterministicID(t *testing.T) {
 	roomID := uuid.New()
 	startAt := time.Date(2026, time.April, 4, 9, 0, 0, 0, time.FixedZone("UTC+3", 3*60*60))
 

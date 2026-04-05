@@ -12,14 +12,14 @@ import (
 type Usecase struct {
 	roomRepo         roomRepo
 	slotRepo         slotRepo
-	ensureDateFilled ensureDateFilledUsecase
+	ensureDateFilled ensureRoomOnDateFilledUsecase
 	slotHorizon      time.Duration
 }
 
 func NewUsecase(
 	roomRepo roomRepo,
 	slotRepo slotRepo,
-	ensureDateFilled ensureDateFilledUsecase,
+	ensureDateFilled ensureRoomOnDateFilledUsecase,
 	slotHorizon time.Duration,
 ) *Usecase {
 

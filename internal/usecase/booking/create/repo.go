@@ -9,6 +9,7 @@ import (
 	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/slot"
 )
 
+//go:generate mockgen -source=repo.go -destination=mocks/repo_mocks.go -package=mocks
 type bookingRepo interface {
 	Create(ctx context.Context, booking *booking.Booking) error
 }

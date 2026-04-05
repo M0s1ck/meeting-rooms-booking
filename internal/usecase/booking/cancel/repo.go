@@ -9,6 +9,7 @@ import (
 	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/booking"
 )
 
+//go:generate mockgen -source=repo.go -destination=mocks/repo_mocks.go -package=mocks
 type bookingRepo interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*booking.Booking, error)
 	Cancel(ctx context.Context, id uuid.UUID, now time.Time) error
