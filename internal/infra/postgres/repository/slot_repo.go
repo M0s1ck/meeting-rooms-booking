@@ -158,6 +158,9 @@ func (r *SlotRepo) GetLastEndAtByRooms(
 	ctx context.Context,
 	roomIDS []uuid.UUID,
 ) (map[uuid.UUID]time.Time, error) {
+	if len(roomIDS) == 0 {
+		return map[uuid.UUID]time.Time{}, nil
+	}
 
 	querier := r.getter.DefaultTrOrDB(ctx, r.db)
 

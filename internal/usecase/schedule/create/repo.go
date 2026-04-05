@@ -7,6 +7,7 @@ import (
 	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/slot"
 )
 
+//go:generate mockgen -source=repo.go -destination=mocks/mocks.go -package=mocks
 type scheduleRepo interface {
 	Create(ctx context.Context, schedule *schedule.Schedule) error
 }
