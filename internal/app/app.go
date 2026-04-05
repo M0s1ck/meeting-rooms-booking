@@ -41,7 +41,7 @@ import (
 )
 
 type App struct {
-	httpSrv         *http.Server
+	HttpSrv         *http.Server
 	cronSched       *cron.Scheduler
 	fillSlotHorizon *fillhorizon.Usecase
 	logger          *slog.Logger
@@ -149,7 +149,7 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 	}
 
 	return &App{
-		httpSrv:         httpSrv,
+		HttpSrv:         httpSrv,
 		fillSlotHorizon: fillSlotHorizon,
 		cronSched:       cronSched,
 		logger:          logger,
@@ -172,9 +172,9 @@ func (app *App) Run(ctx context.Context) error {
 	})
 
 	g.Go(func() error {
-		app.logger.Info("http server starting", "addr", app.httpSrv.Addr)
+		app.logger.Info("http server starting", "addr", app.HttpSrv.Addr)
 
-		err := app.httpSrv.ListenAndServe()
+		err := app.HttpSrv.ListenAndServe()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			return err
 		}
@@ -192,7 +192,7 @@ func (app *App) Shutdown(shutdownCtx context.Context) error {
 		return err
 	}
 
-	if err := app.httpSrv.Shutdown(shutdownCtx); err != nil {
+	if err := app.HttpSrv.Shutdown(shutdownCtx); err != nil {
 		return err
 	}
 

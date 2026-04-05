@@ -40,6 +40,8 @@ services:
       - POSTGRES_PORT=5432
       - POSTGRES_MAX_POOL_CONNS=10
       - POSTGRES_MIN_POOL_CONNS=2
+      - JWT_SECRET=top-secret
+      - JWT_TTL=30m
       - SLOT_HORIZON=336h
       - SLOT_HORIZON_REPAIR_TZ=Europe/Moscow
       - SLOT_HORIZON_REPAIR_TIME=01:00
