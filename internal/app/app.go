@@ -11,6 +11,7 @@ import (
 	"github.com/avito-tech/go-transaction-manager/trm/v2/manager"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/internships-backend/test-backend-M0s1ck/internal/infra/thirdparty/conferenceservice"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/internships-backend/test-backend-M0s1ck/internal/config"
@@ -57,6 +58,7 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 
 	tokenManager := authjwt.NewManager(cfg.JwtCfg)
 	passHasher := infrabcrypt.NewHasher(cfg.BcryptCfg)
+	confLinkProvider := conferenceservice.NewMockProvider(0.05)
 
 	roomRepo := repository.NewRoomRepo(db, txGetter)
 	shedRepo := repository.NewScheduleRepo(db, txGetter)
@@ -77,7 +79,7 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 	fillSlotHorizon := fillhorizon.NewUsecase(slotGen, slotRepo, shedRepo, txManager, slotHorizon)
 	ensureRoomDate := ensureroomdate.NewUsecase(slotGen, shedRepo, slotRepo, txManager)
 	listSlots := listslot.NewUsecase(roomRepo, slotRepo, ensureRoomDate, slotHorizon)
-	createBooking := createbooking.NewUsecase(bookingRepo, slotRepo)
+	createBooking := createbooking.NewUsecase(bookingRepo, slotRepo, confLinkProvider, logger)
 	listBooking := listbooking.NewUsecase(bookingRepo)
 	myBooking := mybooking.NewUsecase(bookingRepo)
 	cancelBooking := cancelbooking.NewUsecase(bookingRepo)

@@ -1,6 +1,7 @@
 package booking
 
 import (
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -38,4 +39,13 @@ func NewActive(slotID, userID uuid.UUID, now time.Time) (*Booking, error) {
 		Status:    StatusActive,
 		CreatedAt: now.UTC(),
 	}, nil
+}
+
+func (b *Booking) SetConferenceLink(link string) error {
+	if strings.TrimSpace(link) == "" {
+		return ErrConfLinkBlank
+	}
+
+	b.ConferenceLink = &link
+	return nil
 }
