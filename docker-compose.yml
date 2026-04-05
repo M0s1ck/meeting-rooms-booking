@@ -44,7 +44,7 @@ services:
       - JWT_TTL=30m
       - SLOT_HORIZON=336h
       - SLOT_HORIZON_REPAIR_TZ=Europe/Moscow
-      - SLOT_HORIZON_REPAIR_TIME=01:00
+      - SLOT_HORIZON_REPAIR_TIME=03:00
       - SLOT_HORIZON_FILLTAIL_INTERVAL=1h
       - BCRYPT_COST=10
     ports:
