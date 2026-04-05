@@ -2,17 +2,19 @@ package list_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
+
 	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/room"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/slot"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/slot/ensureroomdate"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/slot/list"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/slot/list/mocks"
-	"github.com/stretchr/testify/require"
 )
 
 func TestUsecase_Execute_DateInHorizon_Success(t *testing.T) {
@@ -136,5 +138,37 @@ func TestUsecase_Execute_RoomNotFound(t *testing.T) {
 
 	resp, err := uc.Execute(t.Context(), req)
 	require.Equal(t, room.ErrNotFound, err)
+	require.Nil(t, resp)
+}
+
+func TestUsecase_Execute_DateAfterHorizon_ScheduleNotFound(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	roomRepo := mocks.NewMockroomRepo(ctrl)
+	slotRepo := mocks.NewMockslotRepo(ctrl)
+	ensureDateFilled := mocks.NewMockensureRoomOnDateFilledUsecase(ctrl)
+	slotHorizon := time.Hour * 24 * 14
+	uc := list.NewUsecase(roomRepo, slotRepo, ensureDateFilled, slotHorizon)
+
+	now := time.Now().UTC()
+	dateAfterHorizon := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC).
+		AddDate(0, 0, 20)
+
+	req := &list.Request{
+		RoomID: uuid.New(),
+		Date:   dateAfterHorizon,
+	}
+
+	roomRepo.EXPECT().
+		Exists(gomock.Any(), req.RoomID).
+		Return(true, nil)
+
+	ensureDateFilled.EXPECT().
+		Execute(gomock.Any(), gomock.Any()).
+		Return(errors.New("ensure date filled err"))
+
+	resp, err := uc.Execute(t.Context(), req)
+	require.Error(t, err)
 	require.Nil(t, resp)
 }

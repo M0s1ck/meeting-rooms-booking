@@ -15,10 +15,10 @@ var (
 
 type Usecase struct {
 	repo           userRepo
-	tokenGenerator TokenGenerator
+	tokenGenerator tokenGenerator
 }
 
-func NewUsecase(tokenGenerator TokenGenerator, repo userRepo) *Usecase {
+func NewUsecase(tokenGenerator tokenGenerator, repo userRepo) *Usecase {
 	return &Usecase{
 		tokenGenerator: tokenGenerator,
 		repo:           repo,
@@ -34,10 +34,12 @@ func (u *Usecase) Execute(ctx context.Context, req *Request) (*Response, error) 
 		id = userID
 	case user.RoleAdmin:
 		id = adminID
+	default:
+		return nil, user.ErrInvalidRole
 	}
 
 	// for bookings etc.
-	if err := u.repo.Ensure(ctx, userID, role); err != nil {
+	if err := u.repo.Ensure(ctx, id, role); err != nil {
 		return nil, err
 	}
 

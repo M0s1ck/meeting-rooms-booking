@@ -9,11 +9,11 @@ import (
 
 type Usecase struct {
 	repo         userRepo
-	tokenGen     TokenGenerator
+	tokenGen     tokenGenerator
 	passComparor passComparor
 }
 
-func NewUsecase(repo userRepo, tokenGen TokenGenerator, passComparor passComparor) *Usecase {
+func NewUsecase(repo userRepo, tokenGen tokenGenerator, passComparor passComparor) *Usecase {
 	return &Usecase{
 		repo:         repo,
 		tokenGen:     tokenGen,

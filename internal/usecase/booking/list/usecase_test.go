@@ -7,12 +7,13 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
+
 	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/booking"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/user"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/service/authjwt"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/list"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/booking/list/mocks"
-	"github.com/stretchr/testify/require"
 )
 
 func TestUsecase_Execute_Success(t *testing.T) {

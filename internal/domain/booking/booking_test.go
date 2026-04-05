@@ -5,8 +5,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/booking"
 	"github.com/stretchr/testify/require"
+
+	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/booking"
 )
 
 func Test_New_Success(t *testing.T) {
