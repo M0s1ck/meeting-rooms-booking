@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meeting
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: meeting
+  template:
+    metadata:
+      labels:
+        app: meeting
+    spec:
+      containers:
+        - name: meeting-c
+          image: mos1ck/meeting:v1.0
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: meeting-config

@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: meeting-config
+data:
+  POSTGRES_DB: "meeting_db"
+  POSTGRES_USER: "psg_user"
+  POSTGRES_PASSWORD: "psg_pass"
+  POSTGRES_HOST: "localhost"
