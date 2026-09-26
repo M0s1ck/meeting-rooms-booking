@@ -1,15 +1,12 @@
 COMPOSE ?= docker compose
 
-POSTGRES_DB ?= scheduler_db
-POSTGRES_USER ?= psg_user
-POSTGRES_PASSWORD ?= psg_pass
-POSTGRES_HOST ?= localhost
-POSTGRES_PORT ?= 5432
-POSTGRES_SSL_MODE ?= disable
+.PHONY: env up down logs ps migrate seed test
 
-.PHONY: up down logs ps seed
+# create local config from the template if it doesn't exist yet
+env:
+	@test -f .env || (cp .env.example .env && echo "created .env from .env.example")
 
-up:
+up: env
 	$(COMPOSE) up --build -d
 
 down:
@@ -21,6 +18,12 @@ logs:
 ps:
 	$(COMPOSE) ps
 
-seed:
-	POSTGRES_DB=$(POSTGRES_DB) POSTGRES_USER=$(POSTGRES_USER) POSTGRES_PASSWORD=$(POSTGRES_PASSWORD) POSTGRES_HOST=$(POSTGRES_HOST) POSTGRES_PORT=$(POSTGRES_PORT) POSTGRES_SSL_MODE=$(POSTGRES_SSL_MODE) go run ./cmd/seed
+# admin processes run as one-off containers from the same release image and config
+migrate: env
+	$(COMPOSE) run --rm scheduler-postgres-migrate
 
+seed: env
+	$(COMPOSE) run --rm meeting-scheduler ./seed
+
+test:
+	go test ./...

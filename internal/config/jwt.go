@@ -1,7 +1,6 @@
 package config
 
 import (
-	"os"
 	"time"
 )
 
@@ -11,10 +10,10 @@ type JwtCfg struct {
 	Ttl    time.Duration
 }
 
-func loadJwtCfg() *JwtCfg {
+func loadJwtCfg(r *envReader) *JwtCfg {
 	return &JwtCfg{
-		Secret: os.Getenv("JWT_SECRET"),
-		Ttl:    getEnvDuration("JWT_TTL", time.Minute*30),
-		Issuer: getEnv("JWT_ISSUER", "meeting-scheduler"),
+		Secret: r.required("JWT_SECRET"),
+		Ttl:    r.duration("JWT_TTL", 30*time.Minute),
+		Issuer: r.str("JWT_ISSUER", "meeting-scheduler"),
 	}
 }

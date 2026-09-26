@@ -12,6 +12,7 @@ spec:
       labels:
         app: meeting
     spec:
+      terminationGracePeriodSeconds: 30
       containers:
         - name: meeting-c
           image: mos1ck/meeting:v1.0
@@ -20,3 +21,16 @@ spec:
           envFrom:
             - configMapRef:
                 name: meeting-config
+            - secretRef:
+                name: meeting-secret
+          readinessProbe:
+            httpGet:
+              path: /_info
+              port: 8080
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /_info
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10

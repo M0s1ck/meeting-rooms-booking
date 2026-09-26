@@ -1,7 +1,5 @@
 package config
 
-import "os"
-
 type Postgres struct {
 	Host     string
 	Port     string
@@ -14,16 +12,16 @@ type Postgres struct {
 	MinPoolConns int
 }
 
-func loadPsgCfg() *Postgres {
+func loadPsgCfg(r *envReader) *Postgres {
 	return &Postgres{
-		Host:     os.Getenv("POSTGRES_HOST"),
-		Port:     getEnv("POSTGRES_PORT", "5432"),
-		Name:     os.Getenv("POSTGRES_DB"),
-		User:     os.Getenv("POSTGRES_USER"),
-		Password: os.Getenv("POSTGRES_PASSWORD"),
-		SSLMode:  getEnv("POSTGRES_SSL_MODE", "disable"),
+		Host:     r.required("POSTGRES_HOST"),
+		Port:     r.str("POSTGRES_PORT", "5432"),
+		Name:     r.required("POSTGRES_DB"),
+		User:     r.required("POSTGRES_USER"),
+		Password: r.required("POSTGRES_PASSWORD"),
+		SSLMode:  r.str("POSTGRES_SSL_MODE", "disable"),
 
-		MaxPoolConns: getEnvInt("POSTGRES_MAX_POOL_CONNS", 10),
-		MinPoolConns: getEnvInt("POSTGRES_MIN_POOL_CONNS", 2),
+		MaxPoolConns: r.int("POSTGRES_MAX_POOL_CONNS", 10),
+		MinPoolConns: r.int("POSTGRES_MIN_POOL_CONNS", 2),
 	}
 }

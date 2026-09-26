@@ -5,9 +5,11 @@ import (
 	"os"
 )
 
-func NewSlogger() *slog.Logger {
+// NewSlogger writes structured JSON logs to stdout as an unbuffered event stream
+// (12-factor, XI. Logs). Routing and storage are the environment's job.
+func NewSlogger(level slog.Level) *slog.Logger {
 	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
+		Level: level,
 	})
 
 	return slog.New(handler)

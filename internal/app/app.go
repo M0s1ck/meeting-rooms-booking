@@ -11,6 +11,7 @@ import (
 	"github.com/avito-tech/go-transaction-manager/trm/v2/manager"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/internships-backend/test-backend-M0s1ck/internal/config"
@@ -40,11 +41,19 @@ import (
 	listslot "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/slot/list"
 )
 
+// Keys of PostgreSQL advisory locks for background jobs.
+// Any constant int64 works; they only have to be unique within the database.
+const (
+	lockKeySlotHorizonFillTail   int64 = 1001
+	lockKeySlotHorizonFullRepair int64 = 1002
+)
+
 type App struct {
-	HttpSrv         *http.Server
-	cronSched       *cron.Scheduler
-	fillSlotHorizon *fillhorizon.Usecase
-	logger          *slog.Logger
+	HttpSrv           *http.Server
+	db                *pgxpool.Pool
+	cronSched         *cron.Scheduler
+	slotHorizonRepair func(context.Context) error
+	logger            *slog.Logger
 }
 
 func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, error) {
@@ -58,7 +67,7 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 
 	tokenManager := authjwt.NewManager(cfg.JwtCfg)
 	passHasher := infrabcrypt.NewHasher(cfg.BcryptCfg)
-	confLinkProvider := conferenceservice.NewMockProvider(0.05)
+	confLinkProvider := conferenceservice.NewMockProvider(cfg.ConferenceCfg.MockFailureRate)
 
 	roomRepo := repository.NewRoomRepo(db, txGetter)
 	shedRepo := repository.NewScheduleRepo(db, txGetter)
@@ -87,6 +96,12 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 	reg := register.NewUsecase(userRepo, passHasher)
 	logIn := login.NewUsecase(userRepo, tokenManager, passHasher)
 
+	// background jobs run in every replica, but the advisory lock guarantees
+	// that only one of them does the work at a time
+	locker := postgres.NewAdvisoryLocker(db, logger)
+	fillTailJob := locker.WithLock(lockKeySlotHorizonFillTail, fillSlotHorizon.FillTail)
+	fullRepairJob := locker.WithLock(lockKeySlotHorizonFullRepair, fillSlotHorizon.FullRepair)
+
 	cronSched, err := cron.New(logger, cfg.SlotCfg.HorizonRepairTZ)
 	if err != nil {
 		return nil, err
@@ -95,7 +110,7 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 	err = cronSched.AddJob(ctx,
 		cfg.SlotCfg.HorizonFillTailInterval,
 		"fill slot horizon tail",
-		fillSlotHorizon.FillTail,
+		fillTailJob,
 	)
 	if err != nil {
 		return nil, err
@@ -104,7 +119,7 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 	err = cronSched.AddDailyJobAt(ctx,
 		cfg.SlotCfg.HorizonRepairHour, cfg.SlotCfg.HorizonRepairMinute,
 		"slot horizon full repair",
-		fillSlotHorizon.FullRepair,
+		fullRepairJob,
 	)
 	if err != nil {
 		return nil, err
@@ -129,7 +144,7 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 	router.Use(
 		middleware.RequestID,
 		middleware.RealIP,
-		middleware.Logger,
+		appmiddleware.RequestLogger(logger),
 	)
 
 	strictMiddlewares := appmiddleware.NewStrictMiddlewares(tokenManager, logger)
@@ -149,10 +164,11 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 	}
 
 	return &App{
-		HttpSrv:         httpSrv,
-		fillSlotHorizon: fillSlotHorizon,
-		cronSched:       cronSched,
-		logger:          logger,
+		HttpSrv:           httpSrv,
+		db:                db,
+		slotHorizonRepair: fullRepairJob,
+		cronSched:         cronSched,
+		logger:            logger,
 	}, nil
 }
 
@@ -161,7 +177,7 @@ func (app *App) Run(ctx context.Context) error {
 
 	g.Go(func() error {
 		app.logger.Info("initial slot horizon repair started")
-		if err := app.fillSlotHorizon.FullRepair(ctx); err != nil {
+		if err := app.slotHorizonRepair(ctx); err != nil {
 			return err
 		}
 
@@ -188,11 +204,14 @@ func (app *App) Run(ctx context.Context) error {
 func (app *App) Shutdown(shutdownCtx context.Context) error {
 	app.logger.Info("Gracefully shutting down...")
 
-	if err := app.cronSched.Shutdown(); err != nil {
-		return err
-	}
+	// stop accepting requests and let in-flight ones finish
+	httpErr := app.HttpSrv.Shutdown(shutdownCtx)
 
-	if err := app.HttpSrv.Shutdown(shutdownCtx); err != nil {
+	// wait for running background jobs, then release DB connections
+	cronErr := app.cronSched.Shutdown()
+	app.db.Close()
+
+	if err := errors.Join(httpErr, cronErr); err != nil {
 		return err
 	}
 

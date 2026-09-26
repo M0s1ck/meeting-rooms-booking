@@ -87,6 +87,13 @@ func run(m *testing.M) int {
 	loc, _ := time.LoadLocation("Europe/Moscow")
 
 	conf := &config.Config{
+		AppCfg: &config.AppCfg{
+			LogLevel:        slog.LevelInfo,
+			ShutdownTimeout: 10 * time.Second,
+		},
+		ConferenceCfg: &config.ConferenceCfg{
+			MockFailureRate: 0,
+		},
 		HttpCfg: &config.HttpCfg{
 			Addr:         ":8080",
 			ReadTimeout:  5 * time.Second,

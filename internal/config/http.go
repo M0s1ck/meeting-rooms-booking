@@ -10,10 +10,10 @@ type HttpCfg struct {
 	WriteTimeout time.Duration
 }
 
-func loadHttpCfg() *HttpCfg {
+func loadHttpCfg(r *envReader) *HttpCfg {
 	return &HttpCfg{
-		Addr:         getEnv("HTTP_ADDR", ":8080"),
-		ReadTimeout:  getEnvDuration("HTTP_READ_TIMEOUT", 5*time.Second),
-		WriteTimeout: getEnvDuration("HTTP_WRITE_TIMEOUT", 10*time.Second),
+		Addr:         r.str("HTTP_ADDR", ":8080"),
+		ReadTimeout:  r.duration("HTTP_READ_TIMEOUT", 5*time.Second),
+		WriteTimeout: r.duration("HTTP_WRITE_TIMEOUT", 10*time.Second),
 	}
 }

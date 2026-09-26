@@ -31,8 +31,10 @@ var (
 func main() {
 	ctx := context.Background()
 
-	cfg := config.Load()
-	fallBackCfg(cfg)
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("load config: %v", err)
+	}
 
 	db, err := postgres.Connect(ctx, cfg.Psg)
 	if err != nil {
@@ -222,22 +224,4 @@ func seedBooking(ctx context.Context, db *pgxpool.Pool, bookingRepo *repository.
 func startOfUTCDay(t time.Time) time.Time {
 	t = t.UTC()
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
-}
-
-func fallBackCfg(cfg *config.Config) {
-	if cfg.Psg.Host == "" {
-		cfg.Psg.Host = "localhost"
-	}
-
-	if cfg.Psg.User == "" {
-		cfg.Psg.User = "psg_user"
-	}
-
-	if cfg.Psg.Password == "" {
-		cfg.Psg.Password = "psg_pass"
-	}
-
-	if cfg.Psg.Name == "" {
-		cfg.Psg.Name = "scheduler_db"
-	}
 }

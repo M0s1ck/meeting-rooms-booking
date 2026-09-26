@@ -1,30 +1,24 @@
 services:
   scheduler-postgres:
     image: postgres:17-alpine
-    environment:
-      - POSTGRES_DB=scheduler_db
-      - POSTGRES_USER=psg_user
-      - POSTGRES_PASSWORD=psg_pass
+    env_file: .env
     ports:
       - "5432:5432"
     volumes:
       - scheduler-postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U psg_user -d scheduler_db" ]
-      interval: 20s
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}" ]
+      interval: 5s
       timeout: 5s
       retries: 15
       start_period: 10s
 
+  # one-off admin process: same image (release) as the app, runs migrations and exits
   scheduler-postgres-migrate:
-    image: migrate/migrate
-    volumes:
-      - ./internal/infra/postgres/migrations:/migrations
-    command: [
-      "-path", "/migrations",
-      "-database", "postgres://psg_user:psg_pass@scheduler-postgres:5432/scheduler_db?sslmode=disable",
-      "up"
-    ]
+    build:
+      context: .
+    env_file: .env
+    command: [ "sh", "./migrate.sh", "up" ]
     depends_on:
       scheduler-postgres:
         condition: service_healthy
@@ -32,21 +26,7 @@ services:
   meeting-scheduler:
     build:
       context: .
-    environment:
-      - POSTGRES_DB=scheduler_db
-      - POSTGRES_USER=psg_user
-      - POSTGRES_PASSWORD=psg_pass
-      - POSTGRES_HOST=scheduler-postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_MAX_POOL_CONNS=10
-      - POSTGRES_MIN_POOL_CONNS=2
-      - JWT_SECRET=top-secret
-      - JWT_TTL=30m
-      - SLOT_HORIZON=336h
-      - SLOT_HORIZON_REPAIR_TZ=Europe/Moscow
-      - SLOT_HORIZON_REPAIR_TIME=03:00
-      - SLOT_HORIZON_FILLTAIL_INTERVAL=1h
-      - BCRYPT_COST=10
+    env_file: .env
     ports:
       - "8080:8080"
     depends_on:

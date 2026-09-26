@@ -4,8 +4,8 @@ type BcryptCfg struct {
 	Cost int
 }
 
-func loadBcryptCfg() *BcryptCfg {
+func loadBcryptCfg(r *envReader) *BcryptCfg {
 	return &BcryptCfg{
-		Cost: getEnvInt("BCRYPT_COST", 10),
+		Cost: r.int("BCRYPT_COST", 10),
 	}
 }

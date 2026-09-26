@@ -1,0 +1,19 @@
+# One-off admin process: runs DB migrations from the same release image and config as the app.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: meeting-migrate-v1-0
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: migrate
+          image: mos1ck/meeting:v1.0
+          command: [ "sh", "./migrate.sh", "up" ]
+          envFrom:
+            - configMapRef:
+                name: meeting-config
+            - secretRef:
+                name: meeting-secret

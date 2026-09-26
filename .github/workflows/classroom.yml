@@ -24,6 +24,9 @@ jobs:
           docker --version
           docker compose version || docker-compose --version
 
+      - name: Prepare config
+        run: cp .env.example .env
+
       - name: Start services
         run: |
           if docker compose version; then
