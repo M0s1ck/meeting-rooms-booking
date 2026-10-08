@@ -37,3 +37,8 @@ services:
 
 volumes:
   scheduler-postgres-data:
+
+networks:
+  default:
+    # fixed name, so other compose projects (the frontend) can attach to it
+    name: meeting-rooms-net

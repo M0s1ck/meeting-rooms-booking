@@ -287,6 +287,15 @@ type GetRoomsRoomIdSlotsListParams struct {
 	Date openapi_types.Date `form:"date" json:"date"`
 }
 
+// GetRoomsRoomIdSlotsRangeParams defines parameters for GetRoomsRoomIdSlotsRange.
+type GetRoomsRoomIdSlotsRangeParams struct {
+	// From Первая дата диапазона (включительно), UTC
+	From openapi_types.Date `form:"from" json:"from"`
+
+	// To Последняя дата диапазона (включительно), UTC
+	To openapi_types.Date `form:"to" json:"to"`
+}
+
 // PostBookingsCreateJSONRequestBody defines body for PostBookingsCreate for application/json ContentType.
 type PostBookingsCreateJSONRequestBody PostBookingsCreateJSONBody
 
@@ -340,6 +349,9 @@ type ServerInterface interface {
 	// Список доступных для бронирования слотов по переговорке и дате (admin и user). Наиболее нагруженный эндпоинт.
 	// (GET /rooms/{roomId}/slots/list)
 	GetRoomsRoomIdSlotsList(w http.ResponseWriter, r *http.Request, roomId RoomIdPath, params GetRoomsRoomIdSlotsListParams)
+	// Список доступных для бронирования слотов по переговорке за диапазон дат (admin и user).
+	// (GET /rooms/{roomId}/slots/range)
+	GetRoomsRoomIdSlotsRange(w http.ResponseWriter, r *http.Request, roomId RoomIdPath, params GetRoomsRoomIdSlotsRangeParams)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -409,6 +421,12 @@ func (_ Unimplemented) PostRoomsRoomIdScheduleCreate(w http.ResponseWriter, r *h
 // Список доступных для бронирования слотов по переговорке и дате (admin и user). Наиболее нагруженный эндпоинт.
 // (GET /rooms/{roomId}/slots/list)
 func (_ Unimplemented) GetRoomsRoomIdSlotsList(w http.ResponseWriter, r *http.Request, roomId RoomIdPath, params GetRoomsRoomIdSlotsListParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Список доступных для бронирования слотов по переговорке за диапазон дат (admin и user).
+// (GET /rooms/{roomId}/slots/range)
+func (_ Unimplemented) GetRoomsRoomIdSlotsRange(w http.ResponseWriter, r *http.Request, roomId RoomIdPath, params GetRoomsRoomIdSlotsRangeParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -695,6 +713,70 @@ func (siw *ServerInterfaceWrapper) GetRoomsRoomIdSlotsList(w http.ResponseWriter
 	handler.ServeHTTP(w, r)
 }
 
+// GetRoomsRoomIdSlotsRange operation middleware
+func (siw *ServerInterfaceWrapper) GetRoomsRoomIdSlotsRange(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "roomId" -------------
+	var roomId RoomIdPath
+
+	err = runtime.BindStyledParameterWithOptions("simple", "roomId", chi.URLParam(r, "roomId"), &roomId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "roomId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetRoomsRoomIdSlotsRangeParams
+
+	// ------------- Required query parameter "from" -------------
+
+	if paramValue := r.URL.Query().Get("from"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		return
+	}
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		return
+	}
+
+	// ------------- Required query parameter "to" -------------
+
+	if paramValue := r.URL.Query().Get("to"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		return
+	}
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRoomsRoomIdSlotsRange(w, r, roomId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -840,6 +922,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/rooms/{roomId}/slots/list", wrapper.GetRoomsRoomIdSlotsList)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/rooms/{roomId}/slots/range", wrapper.GetRoomsRoomIdSlotsRange)
 	})
 
 	return r
@@ -1402,6 +1487,62 @@ func (response GetRoomsRoomIdSlotsList500JSONResponse) VisitGetRoomsRoomIdSlotsL
 	return json.NewEncoder(w).Encode(response)
 }
 
+type GetRoomsRoomIdSlotsRangeRequestObject struct {
+	RoomId RoomIdPath `json:"roomId"`
+	Params GetRoomsRoomIdSlotsRangeParams
+}
+
+type GetRoomsRoomIdSlotsRangeResponseObject interface {
+	VisitGetRoomsRoomIdSlotsRangeResponse(w http.ResponseWriter) error
+}
+
+type GetRoomsRoomIdSlotsRange200JSONResponse struct {
+	Slots *[]Slot `json:"slots,omitempty"`
+}
+
+func (response GetRoomsRoomIdSlotsRange200JSONResponse) VisitGetRoomsRoomIdSlotsRangeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetRoomsRoomIdSlotsRange400JSONResponse ErrorResponse
+
+func (response GetRoomsRoomIdSlotsRange400JSONResponse) VisitGetRoomsRoomIdSlotsRangeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetRoomsRoomIdSlotsRange401JSONResponse ErrorResponse
+
+func (response GetRoomsRoomIdSlotsRange401JSONResponse) VisitGetRoomsRoomIdSlotsRangeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetRoomsRoomIdSlotsRange404JSONResponse ErrorResponse
+
+func (response GetRoomsRoomIdSlotsRange404JSONResponse) VisitGetRoomsRoomIdSlotsRangeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetRoomsRoomIdSlotsRange500JSONResponse InternalErrorResponse
+
+func (response GetRoomsRoomIdSlotsRange500JSONResponse) VisitGetRoomsRoomIdSlotsRangeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// Создать бронь на слот (только user). Опционально — запросить ссылку на конференцию.
@@ -1437,6 +1578,9 @@ type StrictServerInterface interface {
 	// Список доступных для бронирования слотов по переговорке и дате (admin и user). Наиболее нагруженный эндпоинт.
 	// (GET /rooms/{roomId}/slots/list)
 	GetRoomsRoomIdSlotsList(ctx context.Context, request GetRoomsRoomIdSlotsListRequestObject) (GetRoomsRoomIdSlotsListResponseObject, error)
+	// Список доступных для бронирования слотов по переговорке за диапазон дат (admin и user).
+	// (GET /rooms/{roomId}/slots/range)
+	GetRoomsRoomIdSlotsRange(ctx context.Context, request GetRoomsRoomIdSlotsRangeRequestObject) (GetRoomsRoomIdSlotsRangeResponseObject, error)
 }
 
 type StrictHandlerFunc = strictnethttp.StrictHTTPHandlerFunc
@@ -1776,6 +1920,33 @@ func (sh *strictHandler) GetRoomsRoomIdSlotsList(w http.ResponseWriter, r *http.
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetRoomsRoomIdSlotsListResponseObject); ok {
 		if err := validResponse.VisitGetRoomsRoomIdSlotsListResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetRoomsRoomIdSlotsRange operation middleware
+func (sh *strictHandler) GetRoomsRoomIdSlotsRange(w http.ResponseWriter, r *http.Request, roomId RoomIdPath, params GetRoomsRoomIdSlotsRangeParams) {
+	var request GetRoomsRoomIdSlotsRangeRequestObject
+
+	request.RoomId = roomId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetRoomsRoomIdSlotsRange(ctx, request.(GetRoomsRoomIdSlotsRangeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetRoomsRoomIdSlotsRange")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetRoomsRoomIdSlotsRangeResponseObject); ok {
+		if err := validResponse.VisitGetRoomsRoomIdSlotsRangeResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

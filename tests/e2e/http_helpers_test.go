@@ -64,6 +64,24 @@ func listSlots(t *testing.T, baseURL, token, roomID, date string) []slotDTO {
 	return resp.Slots
 }
 
+func listSlotsRange(t *testing.T, baseURL, token, roomID, from, to string, wantStatus int) []slotDTO {
+	t.Helper()
+
+	var resp struct {
+		Slots []slotDTO `json:"slots"`
+	}
+
+	var out any
+	if wantStatus == http.StatusOK {
+		out = &resp
+	}
+
+	doJSON(t, "GET", baseURL+"/rooms/"+roomID+"/slots/range?from="+from+"&to="+to,
+		token, nil, wantStatus, out)
+
+	return resp.Slots
+}
+
 type bookingDTO struct {
 	ID     string `json:"id"`
 	SlotID string `json:"slotId"`

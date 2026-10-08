@@ -7,6 +7,11 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	// embed the IANA time zone database, so every binary that loads the config
+	// (app, seed) can parse time zones without tzdata in the OS image
+	// (12-factor, II. Dependencies)
+	_ "time/tzdata"
 )
 
 // Config is the whole application configuration.

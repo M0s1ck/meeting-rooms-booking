@@ -13,6 +13,7 @@ import (
 	"github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/mapper"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/middleware"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/transport/http/oapi"
+	listrangeslot "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/slot/listrange"
 )
 
 type StrictHandler struct {
@@ -20,6 +21,7 @@ type StrictHandler struct {
 	listRoom       listRoomUsecase
 	createSchedule createScheduleUsecase
 	listSlot       listSlotUsecase
+	listSlotRange  listSlotRangeUsecase
 	createBooking  createBookingUsecase
 	listBooking    listBookingUsecase
 	myBooking      myBookingUsecase
@@ -35,6 +37,7 @@ func NewHandler(deps HandlerDeps) *StrictHandler {
 		listRoom:       deps.ListRoom,
 		createSchedule: deps.CreateSchedule,
 		listSlot:       deps.ListSlot,
+		listSlotRange:  deps.ListSlotRange,
 		createBooking:  deps.CreateBooking,
 		listBooking:    deps.ListBooking,
 		myBooking:      deps.MyBooking,
@@ -149,6 +152,31 @@ func (s *StrictHandler) GetRoomsRoomIdSlotsList(ctx context.Context, request oap
 	}
 
 	return mapper.ToListSlotsResponse(ucResp), nil
+}
+
+func (s *StrictHandler) GetRoomsRoomIdSlotsRange(ctx context.Context, request oapi.GetRoomsRoomIdSlotsRangeRequestObject) (oapi.GetRoomsRoomIdSlotsRangeResponseObject, error) {
+	ucReq := mapper.ToListSlotsRangeRequest(request.RoomId, request.Params)
+
+	ucResp, err := s.listSlotRange.Execute(ctx, ucReq)
+	if err != nil {
+		switch {
+		case errors.Is(err, listrangeslot.ErrFromAfterTo),
+			errors.Is(err, listrangeslot.ErrRangeTooLarge):
+			return oapi.GetRoomsRoomIdSlotsRange400JSONResponse(
+				helpers.NewErrorResponse(oapi.INVALIDREQUEST, err.Error()),
+			), nil
+		case errors.Is(err, room.ErrNotFound):
+			return oapi.GetRoomsRoomIdSlotsRange404JSONResponse(
+				helpers.NewErrorResponse(oapi.ROOMNOTFOUND, err.Error()),
+			), nil
+		default:
+			return oapi.GetRoomsRoomIdSlotsRange500JSONResponse(
+				helpers.NewInternalErrorResponse("list slots range internal server error"),
+			), nil
+		}
+	}
+
+	return mapper.ToListSlotsRangeResponse(ucResp), nil
 }
 
 func (s *StrictHandler) PostBookingsCreate(ctx context.Context, request oapi.PostBookingsCreateRequestObject) (oapi.PostBookingsCreateResponseObject, error) {

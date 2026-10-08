@@ -21,7 +21,10 @@ COPY --from=build /out/app /out/seed ./
 COPY internal/infra/postgres/migrations ./migrations
 COPY scripts/migrate.sh ./migrate.sh
 
-RUN adduser -D -H app
+# set permissions explicitly: they must not depend on file modes on the build host
+RUN chmod 0755 ./app ./seed ./migrate.sh \
+ && chmod 0755 ./migrations && chmod 0644 ./migrations/* \
+ && adduser -D -H app
 USER app
 
 EXPOSE 8080

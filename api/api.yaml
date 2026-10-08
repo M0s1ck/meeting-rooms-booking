@@ -556,6 +556,68 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/InternalErrorResponse' }
 
+  /rooms/{roomId}/slots/range:
+    get:
+      tags: [Slots]
+      summary: Список доступных для бронирования слотов по переговорке за диапазон дат (admin и user).
+      description: |
+        Возвращает слоты, не занятые активной бронью, для указанной переговорки с даты `from` по дату `to` включительно.
+        Даты интерпретируются как UTC. Слоты в прошлом в ответ не включаются.
+        Параметры `from` и `to` обязательны; `from` не может быть позже `to`,
+        диапазон — не более 31 дня. Иначе возвращается 400.
+        Если у переговорки нет расписания — возвращается пустой список.
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RoomIdPath'
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Первая дата диапазона (включительно), UTC
+          example: "2024-06-10"
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Последняя дата диапазона (включительно), UTC
+          example: "2024-06-16"
+      responses:
+        '200':
+          description: Список доступных слотов, отсортированный по времени начала
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  slots:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Slot'
+        '400':
+          description: Некорректный диапазон дат
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Переговорка не найдена
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InternalErrorResponse' }
+
   # ──────────────────────────────────────────────────────────────
   # Bookings
   # ──────────────────────────────────────────────────────────────

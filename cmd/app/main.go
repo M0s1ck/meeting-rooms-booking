@@ -7,10 +7,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	// embed the IANA time zone database into the binary, so the app does not
-	// depend on tzdata being installed in the OS image (12-factor, II. Dependencies)
-	_ "time/tzdata"
-
 	application "github.com/internships-backend/test-backend-M0s1ck/internal/app"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/config"
 	infralog "github.com/internships-backend/test-backend-M0s1ck/internal/infra/log"

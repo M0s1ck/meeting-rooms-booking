@@ -39,6 +39,7 @@ import (
 	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/slot/ensureroomdate"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/usecase/slot/fillhorizon"
 	listslot "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/slot/list"
+	listrangeslot "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/slot/listrange"
 )
 
 // Keys of PostgreSQL advisory locks for background jobs.
@@ -88,6 +89,7 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 	fillSlotHorizon := fillhorizon.NewUsecase(slotGen, slotRepo, shedRepo, txManager, slotHorizon)
 	ensureRoomDate := ensureroomdate.NewUsecase(slotGen, shedRepo, slotRepo, txManager)
 	listSlots := listslot.NewUsecase(roomRepo, slotRepo, ensureRoomDate, slotHorizon)
+	listSlotsRange := listrangeslot.NewUsecase(roomRepo, slotRepo, ensureRoomDate, slotHorizon)
 	createBooking := createbooking.NewUsecase(bookingRepo, slotRepo, confLinkProvider, logger)
 	listBooking := listbooking.NewUsecase(bookingRepo)
 	myBooking := mybooking.NewUsecase(bookingRepo)
@@ -130,6 +132,7 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 		ListRoom:       listRoom,
 		CreateSchedule: createSchedule,
 		ListSlot:       listSlots,
+		ListSlotRange:  listSlotsRange,
 		CreateBooking:  createBooking,
 		ListBooking:    listBooking,
 		MyBooking:      myBooking,

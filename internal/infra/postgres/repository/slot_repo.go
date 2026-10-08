@@ -114,6 +114,19 @@ func (r *SlotRepo) ListAvailableByRoomAndDate(
 	date time.Time,
 	now time.Time,
 ) ([]slot.Slot, error) {
+	dayStart := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+	return r.ListAvailableByRoomAndRange(ctx, roomID, dayStart, dayStart.AddDate(0, 0, 1), now)
+}
+
+// ListAvailableByRoomAndRange returns slots of the room that start in [from, to),
+// not earlier than now, and have no active booking.
+func (r *SlotRepo) ListAvailableByRoomAndRange(
+	ctx context.Context,
+	roomID uuid.UUID,
+	from time.Time,
+	to time.Time,
+	now time.Time,
+) ([]slot.Slot, error) {
 	querier := r.getter.DefaultTrOrDB(ctx, r.db)
 
 	const query = `
@@ -129,19 +142,23 @@ func (r *SlotRepo) ListAvailableByRoomAndDate(
 		ORDER BY s.start_at, s.id
 	`
 
-	lower := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+	lower := from.UTC()
 	if lower.Before(now) {
 		lower = now
 	}
-	upper := lower.AddDate(0, 0, 1)
+	upper := to.UTC()
+
+	slots := make([]slot.Slot, 0)
+	if !lower.Before(upper) {
+		return slots, nil
+	}
 
 	rows, err := querier.Query(ctx, query, roomID, lower, upper)
 	if err != nil {
-		return nil, fmt.Errorf("list available slots by room and date: %w", err)
+		return nil, fmt.Errorf("list available slots by room and range: %w", err)
 	}
 	defer rows.Close()
 
-	slots := make([]slot.Slot, 0)
 	for rows.Next() {
 		item, scanErr := scanSlot(rows)
 		if scanErr != nil {
@@ -152,7 +169,7 @@ func (r *SlotRepo) ListAvailableByRoomAndDate(
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("list available slots by room and date rows: %w", err)
+		return nil, fmt.Errorf("list available slots by room and range rows: %w", err)
 	}
 
 	return slots, nil

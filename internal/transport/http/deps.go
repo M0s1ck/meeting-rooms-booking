@@ -17,6 +17,7 @@ import (
 	listroom "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/room/list"
 	createschedule "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/schedule/create"
 	listslot "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/slot/list"
+	listrangeslot "github.com/internships-backend/test-backend-M0s1ck/internal/usecase/slot/listrange"
 )
 
 type createRoomUsecase interface {
@@ -33,6 +34,10 @@ type createScheduleUsecase interface {
 
 type listSlotUsecase interface {
 	Execute(ctx context.Context, req *listslot.Request) (*listslot.Response, error)
+}
+
+type listSlotRangeUsecase interface {
+	Execute(ctx context.Context, req *listrangeslot.Request) (*listrangeslot.Response, error)
 }
 
 type createBookingUsecase interface {
@@ -68,6 +73,7 @@ type HandlerDeps struct {
 	ListRoom       listRoomUsecase
 	CreateSchedule createScheduleUsecase
 	ListSlot       listSlotUsecase
+	ListSlotRange  listSlotRangeUsecase
 	CreateBooking  createBookingUsecase
 	ListBooking    listBookingUsecase
 	MyBooking      myBookingUsecase
