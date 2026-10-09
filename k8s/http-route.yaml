@@ -1,0 +1,13 @@
+# not used now because app.x.x -> gw -> traefik -> frontend service (nginx pods) -> meeting-service (backend pods)
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: api
+spec:
+  parentRefs:
+    - name: traefik-gw
+  hostnames: ["api.mosick.space"]
+  rules:
+    - backendRefs:
+        - name: meeting-service
+          port: 80
