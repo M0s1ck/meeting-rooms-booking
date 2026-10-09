@@ -6,11 +6,14 @@ metadata:
 spec:
   backoffLimit: 3
   template:
+    metadata:
+      labels:
+        app: meeting-migrator
     spec:
-      restartPolicy: OnFailure
+      restartPolicy: Never
       containers:
         - name: migrate
-          image: mos1ck/meeting:v1.0
+          image: mos1ck/meeting:1.1
           command: [ "sh", "./migrate.sh", "up" ]
           envFrom:
             - configMapRef:

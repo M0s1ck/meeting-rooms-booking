@@ -15,7 +15,7 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
         - name: meeting-c
-          image: mos1ck/meeting:v1.0
+          image: mos1ck/meeting:1.1
           ports:
             - containerPort: 8080
           envFrom:

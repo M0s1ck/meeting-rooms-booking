@@ -3,10 +3,7 @@ kind: Service
 metadata:
   name: meeting-service
 spec:
-  type: NodePort
   selector:
     app: meeting
   ports:
     - port: 80
-      targetPort: 8080
-      nodePort: 30007
