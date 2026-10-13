@@ -1,0 +1,33 @@
+# helm traefik values
+
+deployment:
+  kind: DaemonSet
+
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 0
+
+ports:
+  web:
+    hostPort: 80
+  websecure:
+    hostPort: 443
+
+service:
+  enabled: false
+
+gateway:
+  enabled: true
+  listeners:
+    web:
+      namespacePolicy:
+        from: All
+
+gatewayClass:
+  enabled: true
+
+providers:
+  kubernetesGateway:
+    enabled: true
