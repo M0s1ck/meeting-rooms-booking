@@ -1,0 +1,82 @@
+# Helm values for vm/victoria-logs-single: VictoriaLogs single-node + Vector DaemonSet (bundled subchart).
+#
+#   helm repo add vm https://victoriametrics.github.io/helm-charts/
+#   helm upgrade --install vlogs vm/victoria-logs-single -n logging --create-namespace -f victoria-logs-values.yaml
+
+server:
+  retentionPeriod: 7d
+  persistentVolume:
+    enabled: true
+    storageClassName: local-path
+    size: 5Gi
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 512Mi }
+
+vector:
+  enabled: true
+  role: Agent
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { memory: 256Mi }
+  # collect logs from the control-plane node too
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+
+  customConfig:
+    data_dir: /vector-data-dir
+    api:
+      enabled: false
+    sources:
+      k8s:
+        type: kubernetes_logs
+        # only the application namespace; system pods would only add noise
+        extra_field_selector: metadata.namespace=default
+      internal_metrics:
+        type: internal_metrics
+    transforms:
+      parser:
+        type: remap
+        inputs: [k8s]
+        # The app writes one JSON object per line to stdout. Lift its fields
+        # (timestamp, level, message, service.name, ...) to the top level of the event.
+        # Non-JSON lines (e.g. postgres) stay as plain message with Vector's own timestamp.
+        source: |
+          parsed, err = parse_json(.message)
+          if err == null && is_object(parsed) {
+            . = merge(., object!(parsed))
+          }
+          if !exists(."service.name") {
+            ."service.name" = .kubernetes.container_name
+          }
+          if !exists(.level) {
+            .level = "info"
+          }
+          del(.file)
+          del(.source_type)
+          del(.kubernetes.pod_annotations)
+          del(.kubernetes.node_labels)
+          del(.kubernetes.namespace_labels)
+    sinks:
+      exporter:
+        type: prometheus_exporter
+        address: 0.0.0.0:9090
+        inputs: [internal_metrics]
+      vlogs:
+        type: elasticsearch
+        inputs: [parser]
+        # endpoints are filled in by the chart: http://<vlogs-svc>:9428/insert/elasticsearch
+        mode: bulk
+        api_version: v8
+        compression: gzip
+        healthcheck:
+          enabled: false
+        request:
+          headers:
+            VL-Time-Field: timestamp
+            VL-Msg-Field: message
+            VL-Stream-Fields: service.name,kubernetes.pod_namespace,kubernetes.container_name,kubernetes.pod_name,stream
+            AccountID: "0"
+            ProjectID: "0"
