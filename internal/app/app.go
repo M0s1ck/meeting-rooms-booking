@@ -18,6 +18,7 @@ import (
 	"github.com/internships-backend/test-backend-M0s1ck/internal/domain/slot"
 	infrabcrypt "github.com/internships-backend/test-backend-M0s1ck/internal/infra/bcrypt"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/infra/cron"
+	"github.com/internships-backend/test-backend-M0s1ck/internal/infra/metrics"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/infra/postgres"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/infra/postgres/repository"
 	"github.com/internships-backend/test-backend-M0s1ck/internal/infra/thirdparty/conferenceservice"
@@ -51,6 +52,7 @@ const (
 
 type App struct {
 	HttpSrv           *http.Server
+	MetricsSrv        *http.Server
 	db                *pgxpool.Pool
 	cronSched         *cron.Scheduler
 	slotHorizonRepair func(context.Context) error
@@ -68,7 +70,12 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 
 	tokenManager := authjwt.NewManager(cfg.JwtCfg)
 	passHasher := infrabcrypt.NewHasher(cfg.BcryptCfg)
-	confLinkProvider := conferenceservice.NewMockProvider(cfg.ConferenceCfg.MockFailureRate)
+	mtr := metrics.New()
+
+	confLinkProvider := &instrumentedConfLinkProvider{
+		next: conferenceservice.NewMockProvider(cfg.ConferenceCfg.MockFailureRate),
+		m:    mtr,
+	}
 
 	roomRepo := repository.NewRoomRepo(db, txGetter)
 	shedRepo := repository.NewScheduleRepo(db, txGetter)
@@ -93,7 +100,7 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 	createBooking := createbooking.NewUsecase(bookingRepo, slotRepo, confLinkProvider, logger)
 	listBooking := listbooking.NewUsecase(bookingRepo)
 	myBooking := mybooking.NewUsecase(bookingRepo)
-	cancelBooking := cancelbooking.NewUsecase(bookingRepo)
+	cancelBooking := cancelbooking.NewUsecase(&instrumentedCancelRepo{cancelBookingRepo: bookingRepo, m: mtr})
 	dummyLogin := dummylogin.NewUsecase(tokenManager, userRepo)
 	reg := register.NewUsecase(userRepo, passHasher)
 	logIn := login.NewUsecase(userRepo, tokenManager, passHasher)
@@ -128,18 +135,18 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 	}
 
 	handler := httpapi.NewHandler(httpapi.HandlerDeps{
-		CreateRoom:     createRoom,
+		CreateRoom:     &instrumentedCreateRoom{next: createRoom, m: mtr},
 		ListRoom:       listRoom,
 		CreateSchedule: createSchedule,
 		ListSlot:       listSlots,
 		ListSlotRange:  listSlotsRange,
-		CreateBooking:  createBooking,
+		CreateBooking:  &instrumentedCreateBooking{next: createBooking, m: mtr},
 		ListBooking:    listBooking,
 		MyBooking:      myBooking,
 		CancelBooking:  cancelBooking,
-		DummyLogin:     dummyLogin,
-		Register:       reg,
-		Login:          logIn,
+		DummyLogin:     &instrumentedDummyLogin{next: dummyLogin, m: mtr},
+		Register:       &instrumentedRegister{next: reg, m: mtr},
+		Login:          &instrumentedLogin{next: logIn, m: mtr},
 	})
 
 	router := chi.NewRouter()
@@ -148,6 +155,7 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 		middleware.RequestID,
 		middleware.RealIP,
 		appmiddleware.RequestLogger(logger),
+		appmiddleware.HTTPMetrics(mtr),
 	)
 
 	strictMiddlewares := appmiddleware.NewStrictMiddlewares(tokenManager, logger)
@@ -166,8 +174,17 @@ func Build(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*App, 
 		WriteTimeout: cfg.HttpCfg.WriteTimeout,
 	}
 
+	// /metrics lives on its own port (METRICS_ADDR, default :9090):
+	// it is scraped by vmagent inside the cluster and is not exposed via HTTPRoute
+	metricsAddr := ":9090"
+	if cfg.MetricsCfg != nil && cfg.MetricsCfg.Addr != "" {
+		metricsAddr = cfg.MetricsCfg.Addr
+	}
+	metricsSrv := metrics.NewServer(metricsAddr, mtr)
+
 	return &App{
 		HttpSrv:           httpSrv,
+		MetricsSrv:        metricsSrv,
 		db:                db,
 		slotHorizonRepair: fullRepairJob,
 		cronSched:         cronSched,
@@ -201,6 +218,17 @@ func (app *App) Run(ctx context.Context) error {
 		return nil
 	})
 
+	g.Go(func() error {
+		app.logger.Info("metrics server starting", "addr", app.MetricsSrv.Addr)
+
+		err := app.MetricsSrv.ListenAndServe()
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
+
+		return nil
+	})
+
 	return g.Wait()
 }
 
@@ -209,12 +237,13 @@ func (app *App) Shutdown(shutdownCtx context.Context) error {
 
 	// stop accepting requests and let in-flight ones finish
 	httpErr := app.HttpSrv.Shutdown(shutdownCtx)
+	metricsErr := app.MetricsSrv.Shutdown(shutdownCtx)
 
 	// wait for running background jobs, then release DB connections
 	cronErr := app.cronSched.Shutdown()
 	app.db.Close()
 
-	if err := errors.Join(httpErr, cronErr); err != nil {
+	if err := errors.Join(httpErr, metricsErr, cronErr); err != nil {
 		return err
 	}
 

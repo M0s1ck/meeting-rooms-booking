@@ -27,5 +27,5 @@ RUN chmod 0755 ./app ./seed ./migrate.sh \
  && adduser -D -H app
 USER app
 
-EXPOSE 8080
+EXPOSE 8080 9090
 CMD ["./app"]

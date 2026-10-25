@@ -9,6 +9,7 @@ data:
   POSTGRES_PORT: "5432"
   POSTGRES_SSL_MODE: "disable"
   HTTP_ADDR: ":8080"
+  METRICS_ADDR: ":9090"
   JWT_TTL: "30m"
   SLOT_HORIZON: "336h"
   SLOT_HORIZON_REPAIR_TZ: "Europe/Moscow"

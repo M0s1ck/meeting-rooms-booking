@@ -24,6 +24,7 @@ type Config struct {
 	SlotCfg       *SlotCfg
 	BcryptCfg     *BcryptCfg
 	ConferenceCfg *ConferenceCfg
+	MetricsCfg    *MetricsCfg
 }
 
 // Load reads the configuration from the environment.
@@ -40,6 +41,7 @@ func Load() (*Config, error) {
 		SlotCfg:       loadSlotCfg(r),
 		BcryptCfg:     loadBcryptCfg(r),
 		ConferenceCfg: loadConferenceCfg(r),
+		MetricsCfg:    loadMetricsCfg(r),
 	}
 
 	if err := errors.Join(r.errs...); err != nil {
