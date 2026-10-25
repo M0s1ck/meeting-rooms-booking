@@ -1,0 +1,42 @@
+# VictoriaMetrics single — хранилище метрик (TSDB).
+# Сама метрики НЕ собирает (scrape.enabled: false): их собирает vmagent
+# (см. victoria-metrics-agent-values.yaml) и присылает сюда по remote write.
+#
+# Установка:
+#   helm repo add vm https://victoriametrics.github.io/helm-charts/
+#   helm repo update
+#   helm install vm-single vm/victoria-metrics-single -n monitoring --create-namespace -f k8s/victoria-metrics-single-values.yaml
+#
+# Сервис получится: vm-single-victoria-metrics-single-server (порт 8428)
+
+server:
+  # сколько хранить данные (h/d/w/y; число без единиц = месяцы)
+  retentionPeriod: 14d
+
+  persistentVolume:
+    enabled: true
+    storageClassName: local-path
+    accessModes:
+      - ReadWriteOnce
+    size: 5Gi
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+  extraArgs:
+    envflag.enable: true
+    envflag.prefix: VM_
+    loggerFormat: json
+    # vmagent шлёт данные раз в 15s; при рестартах/дублях агента
+    # оставляем одну точку на интервал
+    dedup.minScrapeInterval: 15s
+    # ограничение тяжёлых запросов, чтобы не положить маленький VPS
+    search.maxQueryDuration: 30s
+
+  # собирает vmagent, встроенный scrape выключен
+  scrape:
+    enabled: false
