@@ -23,12 +23,18 @@ spec:
     metadata:
       labels:
         app: postgres
+      # service discovery for vmagent: scrape postgres-exporter sidecar
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9187"
+        prometheus.io/path: "/metrics"
     spec:
       containers:
         - name: postgres
           image: postgres:17
           ports:
-            - containerPort: 5432
+            - name: postgres
+              containerPort: 5432
           envFrom:
             - secretRef:
                 name: meeting-secret
@@ -50,6 +56,39 @@ spec:
               memory: 512Mi
             limits:
               memory: 1Gi
+
+        # sidecar: shares the pod network, so it reaches postgres via localhost
+        - name: postgres-exporter
+          image: quay.io/prometheuscommunity/postgres-exporter:v0.20.1
+          ports:
+            - name: metrics
+              containerPort: 9187
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: meeting-config
+                  key: POSTGRES_DB
+            - name: DATA_SOURCE_URI
+              value: "localhost:5432/$(POSTGRES_DB)?sslmode=disable"
+            - name: DATA_SOURCE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: meeting-secret
+                  key: POSTGRES_USER
+            - name: DATA_SOURCE_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: meeting-secret
+                  key: POSTGRES_PASSWORD
+          # no readiness probe on purpose: an unready exporter would make the whole
+          # pod unready and drop postgres from the headless service DNS
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 64Mi
 
   volumeClaimTemplates:
     - metadata:
